@@ -1,42 +1,67 @@
 // prisma/schema.prisma
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
+// 1. FIXED: Provider diubah ke format yang benar
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")  // ✅ BALIKIN LAGI KE SINI!
-}
-
+// 2. MODEL USER: Diselaraskan dengan Supabase Auth + zkLogin Identity
 model User {
-  id            String    @id @default(cuid())
-  googleId      String    @unique
-  email         String    @unique
-  name          String?
-  picture       String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime  @default(now())
-  
-  sessions      Session[]
+  id            String   @id @default(cuid()) // Tambahkan default jika daftar via email
+  email         String   @unique
+  password      String?  // TAMBAHAN: Untuk menyimpan hash password
+  displayName   String?
+  walletAddress String   @unique 
+  googleSub     String?  @unique 
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@index([googleId])
-  @@index([email])
-  @@map("users")
+  projects      Project[]
+  sentTx        Transaction[] @relation("SenderRelation")
+  receivedTx    Transaction[] @relation("RecipientRelation")
 }
 
-model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+// 3. MODEL PROJECT: Pengelompokan transaksi P2P (Project-centric Grouping)
+model Project {
+  id           String        @id @default(uuid())
+  name         String
+  description  String?
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  
+  transactions Transaction[]
+}
 
-  @@index([token])
-  @@index([expiresAt])
-  @@map("sessions")
+// 4. MODEL TRANSACTION: Mengelola metadata, kategori P2P, dan link ke blockchain + Arweave
+model Transaction {
+  id              String   @id @default(uuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title           String
+  amount          Decimal  // Aman untuk desimal uang finansial (IDRX)
+  descriptionHash String   // IPFS / Off-chain metadata hash
+  arweaveTxId     String?  // Tambahan: Menyimpan permanent audit log ID dari Arweave/Irys
+  
+  // Kategori: 0 = Personal, 1 = Procurement, 2 = Business
+  category        Int      @default(0) 
+  
+  // Status: PENDING, CONFIRMED, REJECTED, CANCELLED
+  status          String   @default("PENDING")
+  
+  senderId        String
+  sender          User     @relation("SenderRelation", fields: [senderId], references: [id])
+  
+  recipientId     String
+  recipient       User     @relation("RecipientRelation", fields: [recipientId], references: [id])
+  
+  txHash          String?  // Menyimpan BNB Chain transaction hash untuk Judge Mode overlay
+  createdAt       DateTime @default(now())
 }
