@@ -1,0 +1,42 @@
+import type { Metadata } from "next";
+import { Ledger, Stack_Sans_Text } from "next/font/google";
+import { GoogleOAuthProvider } from '@react-oauth/google'
+import "./globals.css";
+
+const ledger = Ledger({
+  variable: "--font-ledger",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+const stackSansText = Stack_Sans_Text({
+  variable: "--font-stack-sans-text",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Ledgera",
+  description: "P2P Transaction Platform based on Blockchain.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${ledger.variable} ${stackSansText.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col bg-surface text-brand-dark">
+        {/* WRAP dengan GoogleOAuthProvider */}
+        <GoogleOAuthProvider 
+          clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}
+        >
+          {children}
+        </GoogleOAuthProvider>
+      </body>
+    </html>
+  );
+}

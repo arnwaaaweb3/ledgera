@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* stylelint-disable-next-line at-rule-no-unknown */
+@theme inline {
+  /* --- FONT MAPPINGS --- */
+  --font-heading: var(--font-ledger);
+  --font-body: var(--font-stack-sans-text);
+
+  /* --- COLOR PALETTE --- */
+  --color-brand-dark: #021A54;       /* Deep Navy */
+  --color-brand-pink: #FF85BB;       /* Bright Pink */
+  --color-brand-light-pink: #FFCEE3; /* Soft Pink */
+  --color-surface: #F5F5F5;          /* Off-White */
+
+  /* --- DEFAULTS (Mapped to Palette) --- */
+  --color-background: var(--color-surface);
+  --color-foreground: var(--color-brand-dark);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+}
+
+/* 
+  PRO TIP: Terapkan font heading secara global ke semua tag h1-h6.
+  Jadi kamu tidak perlu menulis class="font-heading" terus-menerus di setiap komponen!
+*/
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}

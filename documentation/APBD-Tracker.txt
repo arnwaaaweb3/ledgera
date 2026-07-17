@@ -1,0 +1,105 @@
+1. Concept:
+- Ada sebuah app / platform dimana semua transaksi sifatnya transparan. It's more like P2P transaction app tanpa perantara
+dengan Dashboard khusus yang bisa digunakan untuk memantau proses atau hasil transaksinya. 
+Think of this like a bank transaction where we have receipt dan bisa lihat mutasinya, but without the bank or third parties itself.
+- Semua transaksi di dalam app ini dijalankan secara otomatis melalui smart contract, tanpa perlu perantara atau institusi.
+- But, dont sell this app as web3 or smart contract, or blockchain app. Just a simple P2P transaction app.
+- Yang membuat P2P transaction app ini unik adalah, kita bakal punya fitur "Project" dimana nanti User bisa bikin project baru dan add some real-time transaction there in one piece.
+Think of it like an all-transaction-for-one-project-in-one-tracking-app.
+
+2. Problem:
+- Dalam konteks profesionalitas, trust merupakan sebuah hal yang essential and a must. Especially when it comes to financial stuff.
+- Human tends to make errors dalam pembukuan transaksi, seperti kekeliruan pencatatan nominal transaksi, atau penjumlahan transaksi, while computing code are not.\
+- Corruption dalam institusi atau pemerintahan saat pengadaan barang, seperti anggaran palsu, mark up anggaran, dll.
+- Financial Transparancy problem
+- Sistem keuangan yang dapat dipercaya dan diaudit oleh setiap lapisan stakeholder, or even for personal usecase.
+
+3. Statement:
+- Sebenernya namanya mungkin nanti bukan APBD-Tracker. Kita cari nama yang lebih profesional.
+Kenapa? karena aku gamau app ini hanya terbatas sama APBD aja. It's more like a finance tracker sih honestly.
+- JANGAN PERNAH JUAL NAMA WEB3. Make it seamless by breeding the hybrid approach of the ease of use from web2, and secure tech from web3.
+Kalo bisa, jangan buat user tahu kalo transaksinya recorded on blockchain. 
+- Top UP diberi banyak pilihan cara. Bisa melalui cara sederhana QRIS, transfer bank, atau even kalo user udah punya wallet sendiri, login sendiri juga bisa.
+- Top UP sistem kita itu otomatis mengubah IDR Rupiah, baik melalui QRIS, or transfer bank, menjadi IDR Stablecoin.
+- All participant during each transaction must have an account registered di platform kita. Without that, no use.
+Think of it like ShopeePay, dimana setiap transaksi antar ShopeePay wallet, si user harus punya dompetnya. Bedanya ShopeePay dompet all usecase, kalo kita fokusnya ke P2P transaksi aja.
+
+4. Flow:
+LOGIN:
+Opsi A
+- Nawa (User Baru) 
+-> Bikin akun baru pada platform 
+-> Isi kek Nama, Username, Email, and Profile Picture
+-> Akun registered di database (could be postgresql atau opsi lain yang kamu tahu)
+-> Once akun registered, sistem otomatis bikin wallet baru secara private buat akun user, using zkLogin
+-> That's it! Sistem login sudah selesai. Nanti kita kasih like a checkbox "Remember me" buat user biar ga login manual terus terusan.
+
+Opsi B
+- Nawa (User Baru)
+-> Login via Google
+-> Sistem otomatis menginitialisasi akun baru berdasarkan login google.
+-> User isi kek Nama, Username, Email, and Profile Picture
+-> Akun registered di database (could be postgresql atau opsi lain yang kamu tahu)
+-> Once akun registered, sistem otomatis bikin wallet baru secara private buat akun user, using zkLogin
+-> That's it! Sistem login sudah selesai. Nanti kita kasih like a checkbox "Remember me" buat user biar ga login manual terus terusan.
+
+TRANSAKSI:
+-> Pastikan balance dalam setiap akun sudah ada, jika belum, bisa melakukan top up melalui QRIS, Bank transfer, or even Wallet Transfer.
+-> TOP UP LOGICS:
+1. QRIS & Bank Transfer: 
+After user deposit dananya dari bank or via qris, 
+dana akan masuk ke akun rekening escrow platform.
+There, behind the layers, our platform immediately converts dana rupiah menjadi stablecoin like IDRX atau trusted stablecoin lainnya.
+Once the converts done, the platform will execute the smart contract.
+The smart contract then running and the funds are being processed and immediately executed to the account's wallet.
+So the final action is that each account has a wallet with stablecoin, instead of dana digital rupiah biasa.
+2. Wallet Transfer:
+User deposit dananya ke wallet, dalam bentuk dana digital rupiah.
+Kemudian user secara manual menukarkan balance walletnya dengan stablecoin like IDRX or else.
+Wallet siap digunakan.
+-> Create a new Project untuk semua transaksi dalam satu aktivitas.
+-> Menambahkan penerima ke dalam daftar koneksi akun dengan copy paste alamat wallet or QR Scan for simplicity.
+-> Tambahkan minimal satu transaksi atau lebih didalamnya, dengan mengisi Judul, Nominal, Deskripsi, serta Tambahkan Penerima yang telah didaftarkan dalam daftar koneksi.
+-> Transaksi akan jadi pending, dimana uang masuk ke akun escrow platform
+-> Di sisi lain, penerima akan mendapatkan notifikasi rincian transfer.
+-> Penerima diminta untuk mengisi data dan deskripsi dari transaksi yang sedang berlangsung.
+-> Setelah mengisi, Dana dari akun escrow akan dieksekusi secara otomatis melalui smart contract ke dalam balance akun penerima.
+-> Transaksi selesai, dan kedua belah pihak dapat mengupdate berkembangan proyek secara berkala.
+ 
+5. Real Simulasi: ACTION | [BEHIND LAYERS]
+Nawa adalah seorang Head of Marketing Team dari PT. Nusa Asri Global Pasifik dimana dia sedang menjalankan campaign marketing untuk perusahaannya.
+- Nawa (User Baru)
+-> Bikin akun baru pada platform | [dialihkan ke page isi data diri]
+-> Isi kek Nama, Username, Email, and Profile Picture, klik "Create a New Account" | [Akun didaftarkan di database platform]
+-> Akun registered di database | [Akun selesai dibuat dan dapat dipakai dalam ekosistem platform]
+-> Top-up akun for the balance, lewat QRIS, sebesar Rp. 15.000.000 | [QRIS dari Rekening Bank akan otomatis mengirimkan dana Rp. 15.000.000 ke dalam akun escrow dari platform]
+-> Nawa mendapat notifikasi "Top Up Success" dan balance akun bertambah | [Apabila dana sudah diterima di akun rekening escrow platform, Dana tersebut secara otomatis akan diubah menjadi IDR Stablecoin dan Nawa menerima IDR Stablecoin senilai Rp. 15.000.000]
+-> Nawa mendaftarkan Aini sebagai daftar penerima dana di dalam akunnya | [Aini terdaftar sebagai penerima dana dalam daftar koneksi akun Nawa]
+-> Create a New Project, namanya "Marketing PT.Nusa Asri 15 Agustus 2026" | ["Marketing PT.Nusa Asri 15 Agustus 2026" berhasil dibuat sebagai project dari akun.]
+-> Create a New Transaction, judulnya "Bayar KOL Aini", input nominal Rp. 5.000.000, tulis deskripsi transaksi, add akun Aini sebagai penerima and klik "Add Transaction" | [Transaksi dengan nama "Bayar KOL Aini" dengan nominal Rp. 5.000.000 tercatat ke dalam database kita, frontend manggil fungsi tx dari wallet.]
+-> Nawa dapat popup dari platform tentang detail transaksi dan Nawa menekan tombol "Confirm Transaction" [Dari Wallet, akan kirim frontend Permission buat "Signature". Nah Signature ini kita tampilkan sebagai pop up message yang isinya data transfer tadi, dan kasih tombol "Confirm Transaction" sebagai consent untuk menyetujui transaksi]
+-> [Smart Contract (Solidity) disini bekerja sesuai code yang sudah kita program]
+-> Nawa dapat notifikasi "Transaksi Pending" | [Sistem secara otomatis mengirimkan IDR Stablecoin Rp. 5.000.000 dari wallet Nawa ke wallet escrow platform]
+-> Akun Aini akan mendapat pesan dari sistem untuk melengkapi data transaksi seperti:
+- Tujuan transaksi: 
+a. Transaksi Personal, 
+b. Pengadaan Barang atau Jasa,
+c. Transaksi Bisnis,
+dll.
+-> Dalam konteks ini, Aini akan mengisi data transaksi sebagai transaksi bisnis, dengan mencantumkan ketentuan dan pernjanjian bisnis mereka.
+-> [Proses transaksi ini dicatat dalam blockchain, deep behind layers, BNB Chain]
+-> Dana Stablecoin masuk ke akun Aini dari akun escrow | [Akun Aini menerima notifikasi adanya uang transfer transaksi yang masuk]
+-> Project "Marketing PT.Nusa Asri 15 Agustus 2026" mempunyai 1 transaksi di dalamnya | [Proses transaksi antara Nawa dan Aini dapat diaudit oleh semua orang melalui Etherscan]
+-> [Baik dari Nawa atau Aini dapat memberikan update secara berkala terkait progress dari proyek yang sedang berjalan.]
+-> Nawa dapat menambah transaksi lainnya dalam satu proyek ini, apabila terdapat beberapa transaksi terpisah dengan penerima berbeda dalam satu proyek.
+
+6. Unsure Flow
+- Dibagian ini, apakah juga akan dipotong dengan biaya layanan? jadi setiap user top up dan ngubah IDR to Stablecoin ada biaya fee layanan? I think it should not be, tapi ini bisa jadi bahan pertimbangan.
+-> Top-up akun for the balance, lewat QRIS, sebesar Rp. 15.000.000 | [QRIS dari Rekening Bank akan otomatis mengirimkan dana Rp. 15.000.000 ke dalam akun escrow dari platform
+-> [Apabila dana sudah diterima di akun rekening escrow platform, Dana tersebut secara otomatis akan diubah menjadi IDR Stablecoin dan Nawa menerima IDR Stablecoin senilai Rp. 15.000.000]
+- Bagian ini, bisa didefinisikan lebih rinci lagi!
+Tujuan transaksi: 
+a. Transaksi Personal, 
+b. Pengadaan Barang atau Jasa,
+c. Transaksi Bisnis
+dll.
