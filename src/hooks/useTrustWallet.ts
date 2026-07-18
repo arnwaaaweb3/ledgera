@@ -1,11 +1,11 @@
-// src/hooks/useBinanceWallet.ts
+// src/hooks/useTrustWallet.ts
 
 "use client";
 
 import { useState, useEffect } from 'react';
 import {
-  getBinanceProvider,
-  isBinanceInstalled,
+  getTrustProvider,
+  isTrustInstalled,
   getStoredAddress,
   getStoredWalletType,
   saveWalletInfo,
@@ -15,9 +15,9 @@ import {
 import { WALLET_TYPES } from '@/src/constants/wallet';
 import { WalletHookReturn } from '@/src/types/wallet';
 
-export function useBinanceWallet(): WalletHookReturn {
+export function useTrustWallet(): WalletHookReturn {
   const [address, setAddress] = useState<string | null>(() => {
-    if (getStoredWalletType() === WALLET_TYPES.BINANCE) {
+    if (getStoredWalletType() === WALLET_TYPES.TRUST) {
       return getStoredAddress();
     }
     return null;
@@ -26,19 +26,19 @@ export function useBinanceWallet(): WalletHookReturn {
   const [error, setError] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
 
-  // Is Binance Wallet installed?
-  const [isInstalled] = useState(() => isBinanceInstalled());
+  // Is Trust Wallet (not Phantom/MM masquerade) installed?
+  const [isInstalled] = useState(() => isTrustInstalled());
 
   // Setup listeners and check existing connection
   useEffect(() => {
     let isMounted = true;
 
-    const binance = getBinanceProvider();
-    if (!binance) return;
+    const provider = getTrustProvider();
+    if (!provider) return;
 
     const checkExistingConnection = async () => {
       try {
-        const accounts = await binance.request({ method: 'eth_accounts' }) as string[];
+        const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
         if (isMounted && accounts?.length > 0) {
           setAddress(accounts[0]);
         }
@@ -49,7 +49,7 @@ export function useBinanceWallet(): WalletHookReturn {
 
     const checkChainId = async () => {
       try {
-        const result = await binance.request({ method: 'eth_chainId' }) as string;
+        const result = await provider.request({ method: 'eth_chainId' }) as string;
         if (isMounted) setChainId(result);
       } catch {
         // Silent fail
@@ -59,16 +59,37 @@ export function useBinanceWallet(): WalletHookReturn {
     checkExistingConnection();
     checkChainId();
 
+    const handleAccountsChanged = (accounts: unknown) => {
+      const accs = accounts as string[];
+      if (accs?.length > 0) {
+        setAddress(accs[0]);
+        saveWalletInfo(accs[0], WALLET_TYPES.TRUST);
+      } else {
+        setAddress(null);
+        clearWalletInfo();
+      }
+    };
+
+    const handleChainChanged = (newChainId: unknown) => {
+      setChainId(newChainId as string);
+      if (typeof window !== 'undefined') window.location.reload();
+    };
+
+    provider.on?.('accountsChanged', handleAccountsChanged);
+    provider.on?.('chainChanged', handleChainChanged);
+
     return () => {
       isMounted = false;
+      provider.removeListener?.('accountsChanged', handleAccountsChanged);
+      provider.removeListener?.('chainChanged', handleChainChanged);
     };
   }, []);
 
   const connect = async (): Promise<string> => {
-    const binance = getBinanceProvider();
+    const provider = getTrustProvider();
 
-    if (!binance) {
-      const err = 'Binance Wallet not installed. Please install it first.';
+    if (!provider) {
+      const err = 'Trust Wallet not installed. Please install it first.';
       setError(err);
       throw new Error(err);
     }
@@ -77,7 +98,7 @@ export function useBinanceWallet(): WalletHookReturn {
     setError(null);
 
     try {
-      const accounts = await binance.request({
+      const accounts = await provider.request({
         method: 'eth_requestAccounts',
       }) as string[];
 
@@ -85,10 +106,10 @@ export function useBinanceWallet(): WalletHookReturn {
 
       const walletAddress = accounts[0];
       setAddress(walletAddress);
-      saveWalletInfo(walletAddress, WALLET_TYPES.BINANCE);
+      saveWalletInfo(walletAddress, WALLET_TYPES.TRUST);
 
       try {
-        const result = await binance.request({ method: 'eth_chainId' }) as string;
+        const result = await provider.request({ method: 'eth_chainId' }) as string;
         setChainId(result);
       } catch {
         // Chain ID is optional
@@ -112,11 +133,11 @@ export function useBinanceWallet(): WalletHookReturn {
   };
 
   const switchNetwork = async (targetChainId: string): Promise<void> => {
-    const binance = getBinanceProvider();
-    if (!binance) throw new Error('Binance Wallet not found');
+    const provider = getTrustProvider();
+    if (!provider) throw new Error('Trust Wallet provider not found');
 
     try {
-      await binance.request({
+      await provider.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: targetChainId }],
       });
@@ -125,7 +146,7 @@ export function useBinanceWallet(): WalletHookReturn {
       const err = switchError as { code?: number };
       if (err.code === 4902) {
         try {
-          await binance.request({
+          await provider.request({
             method: 'wallet_addEthereumChain',
             params: [
               {

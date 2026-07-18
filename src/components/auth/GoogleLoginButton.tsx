@@ -16,7 +16,7 @@ export default function GoogleLoginButton({ turnstileToken }: GoogleLoginButtonP
     onSuccess: async (tokenResponse) => {
       // Validasi: Cegah pengiriman data jika token Turnstile belum siap
       if (!turnstileToken) {
-        alert("Sistem keamanan sedang memverifikasi koneksi Anda. Mohon coba sesaat lagi.");
+        alert("Security verification is in progress. Please try again.");
         return;
       }
 

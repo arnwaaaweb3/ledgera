@@ -1,13 +1,17 @@
+// src/components/auth/wallets/WalletModal.tsx
+
 "use client";
 
 import { useEffect } from "react";
 import BinanceWallet from "./BinanceWallet";
 import MetaMaskWallet from "./MetaMaskWallet";
+import TrustWallet from "./TrustWallet";
+import WalletConnectWallet from "./WalletConnectWallet";
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnect: (address: string) => void;
+  onConnect: (address: string, type: string) => void;
 }
 
 export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalProps) {
@@ -31,6 +35,23 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  // Handler wrapper untuk kirim type wallet
+  const handleBinanceConnect = (address: string) => {
+    onConnect(address, "binance");
+  };
+
+  const handleMetaMaskConnect = (address: string) => {
+    onConnect(address, "metamask");
+  };
+
+  const handleTrustConnect = (address: string) => {
+    onConnect(address, "trust");
+  };
+
+  const handleWalletConnect = (address: string) => {
+    onConnect(address, "wallet_connect");
+  };
 
   return (
     <div 
@@ -65,15 +86,18 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
 
         {/* Body - Wallet Options */}
         <div className="p-6 space-y-3">
-          {/* Binance Wallet */}
-          <BinanceWallet onConnect={onConnect} onClose={onClose} />
-
           {/* MetaMask Wallet */}
-          <MetaMaskWallet onConnect={onConnect} onClose={onClose} />
+          <MetaMaskWallet onConnect={handleMetaMaskConnect} onClose={onClose} />
+
+          {/* Binance Wallet */}
+          <BinanceWallet onConnect={handleBinanceConnect} onClose={onClose} />
+
+          {/* Trust Wallet */}
+          <TrustWallet onConnect={handleTrustConnect} onClose={onClose} />
+
+          {/* WalletConnect */}
+          <WalletConnectWallet onConnect={handleWalletConnect} onClose={onClose} />
           
-          {/* Nanti tambahin wallet lain di sini */}
-          {/* <MetaMaskWallet onConnect={onConnect} onClose={onClose} /> */}
-          {/* <WalletConnect onConnect={onConnect} onClose={onClose} /> */}
         </div>
 
         {/* Footer */}

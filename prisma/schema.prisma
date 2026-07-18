@@ -13,12 +13,14 @@ generator client {
 
 // 2. MODEL USER: Diselaraskan dengan Supabase Auth + zkLogin Identity
 model User {
-  id            String   @id @default(cuid()) // Tambahkan default jika daftar via email
+  id            String   @id @default(cuid()) 
   email         String   @unique
-  password      String?  // TAMBAHAN: Untuk menyimpan hash password
+  password      String?  
   displayName   String?
   walletAddress String   @unique 
   googleSub     String?  @unique 
+  microsoftSub  String?  @unique
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

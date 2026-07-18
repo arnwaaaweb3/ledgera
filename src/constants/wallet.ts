@@ -33,4 +33,5 @@ export const WALLET_TYPES = {
   PHANTOM: 'phantom',
   TRUST: 'trust',
   COINBASE: 'coinbase',
+  WALLET_CONNECT: 'wallet_connect',
 } as const;

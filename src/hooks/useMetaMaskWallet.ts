@@ -3,10 +3,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { 
-  getEthereumProvider,
-  isRealMetaMask,
-  isProviderAvailable,
+import {
+  getMetaMaskProvider,
+  isMetaMaskInstalled,
   getStoredAddress,
   saveWalletInfo,
   clearWalletInfo,
@@ -20,46 +19,35 @@ export function useMetaMaskWallet(): WalletHookReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
-  
-  // Cek instalasi sekali di awal (tanpa re-render)
-  const [isInstalled] = useState(() => {
-    const provider = getEthereumProvider();
-    return isRealMetaMask(provider);
-  });
 
-  // Setup listeners dan cek koneksi awal
+  // Is MetaMask (not Phantom) installed?
+  const [isInstalled] = useState(() => isMetaMaskInstalled());
+
+  // Setup listeners and check existing connection
   useEffect(() => {
     let isMounted = true;
-    
-    const provider = getEthereumProvider();
-    
-    // Skip jika bukan MetaMask asli atau tidak ada provider
-    if (!isRealMetaMask(provider) || !isProviderAvailable(provider)) {
-      return;
-    }
 
-    // Provider sudah dipastikan tidak null di sini
-    const safeProvider = provider;
+    const provider = getMetaMaskProvider();
 
-    // Cek akun yang sudah terhubung
+    if (!provider) return;
+
+    // Check already-connected accounts
     const checkExistingConnection = async () => {
       try {
-        const accounts = await safeProvider.request({ method: 'eth_accounts' }) as string[];
+        const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
         if (isMounted && accounts?.length > 0) {
           setAddress(accounts[0]);
         }
       } catch {
-        // Silent fail - user belum connect
+        // Silent fail — user hasn't connected yet
       }
     };
 
-    // Cek chain ID
+    // Check chain ID
     const checkChainId = async () => {
       try {
-        const chainIdResult = await safeProvider.request({ method: 'eth_chainId' }) as string;
-        if (isMounted) {
-          setChainId(chainIdResult);
-        }
+        const result = await provider.request({ method: 'eth_chainId' }) as string;
+        if (isMounted) setChainId(result);
       } catch {
         // Silent fail
       }
@@ -68,7 +56,6 @@ export function useMetaMaskWallet(): WalletHookReturn {
     checkExistingConnection();
     checkChainId();
 
-    // Event handlers
     const handleAccountsChanged = (accounts: unknown) => {
       const accs = accounts as string[];
       if (accs?.length > 0) {
@@ -80,68 +67,53 @@ export function useMetaMaskWallet(): WalletHookReturn {
       }
     };
 
-    const handleChainChanged = (chainIdResult: unknown) => {
-      setChainId(chainIdResult as string);
-      // Reload recommended by MetaMask
-      if (typeof window !== 'undefined') {
-        window.location.reload();
-      }
+    const handleChainChanged = (newChainId: unknown) => {
+      setChainId(newChainId as string);
+      if (typeof window !== 'undefined') window.location.reload();
     };
 
-    // Subscribe ke events
-    safeProvider.on?.('accountsChanged', handleAccountsChanged);
-    safeProvider.on?.('chainChanged', handleChainChanged);
+    provider.on?.('accountsChanged', handleAccountsChanged);
+    provider.on?.('chainChanged', handleChainChanged);
 
-    // Cleanup
     return () => {
       isMounted = false;
-      safeProvider.removeListener?.('accountsChanged', handleAccountsChanged);
-      safeProvider.removeListener?.('chainChanged', handleChainChanged);
+      provider.removeListener?.('accountsChanged', handleAccountsChanged);
+      provider.removeListener?.('chainChanged', handleChainChanged);
     };
   }, []);
 
-  /**
-   * Connect ke MetaMask
-   */
   const connect = async (): Promise<string> => {
-    const provider = getEthereumProvider();
+    const provider = getMetaMaskProvider();
 
-    // Validasi: Provider tersedia?
-    if (!isProviderAvailable(provider)) {
+    if (!provider) {
       const err = 'MetaMask not installed. Please install it first.';
       setError(err);
       throw new Error(err);
     }
 
-    // Validasi: Ini MetaMask asli?
-    if (!isRealMetaMask(provider)) {
-      const err = 'MetaMask not detected. Please install MetaMask extension.';
-      setError(err);
-      throw new Error(err);
-    }
-
-    // Provider sudah dipastikan tidak null di sini
-    const safeProvider = provider;
-
     setLoading(true);
     setError(null);
 
     try {
-      const accounts = await safeProvider.request({ 
-        method: 'eth_requestAccounts' 
+      const accounts = await provider.request({
+        method: 'eth_requestAccounts',
       }) as string[];
 
-      if (!accounts?.length) {
-        throw new Error('No accounts found');
-      }
+      if (!accounts?.length) throw new Error('No accounts found');
 
       const walletAddress = accounts[0];
       setAddress(walletAddress);
       saveWalletInfo(walletAddress, WALLET_TYPES.METAMASK);
-      
+
+      try {
+        const result = await provider.request({ method: 'eth_chainId' }) as string;
+        setChainId(result);
+      } catch {
+        // Chain ID is optional
+      }
+
       setLoading(false);
       return walletAddress;
-      
     } catch (err) {
       const errorMessage = formatErrorMessage(err);
       setError(errorMessage);
@@ -150,55 +122,33 @@ export function useMetaMaskWallet(): WalletHookReturn {
     }
   };
 
-  /**
-   * Disconnect dari MetaMask
-   */
   const disconnect = (): void => {
     setAddress(null);
     setError(null);
     clearWalletInfo();
   };
 
-  /**
-   * Switch network
-   */
   const switchNetwork = async (targetChainId: string): Promise<void> => {
-    const provider = getEthereumProvider();
-
-    if (!isProviderAvailable(provider)) {
-      throw new Error('Ethereum provider not found');
-    }
-
-    // Provider sudah dipastikan tidak null di sini
-    const safeProvider = provider;
+    const provider = getMetaMaskProvider();
+    if (!provider) throw new Error('MetaMask provider not found');
 
     try {
-      await safeProvider.request({
+      await provider.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: targetChainId }],
       });
     } catch (switchError) {
-      // Error code 4902 = Chain belum ditambahkan
-      const isChainNotAdded = 
-        switchError && 
-        typeof switchError === 'object' && 
-        'code' in switchError && 
-        switchError.code === 4902;
-
-      if (isChainNotAdded) {
+      const err = switchError as { code?: number };
+      if (err.code === 4902) {
         try {
-          await safeProvider.request({
+          await provider.request({
             method: 'wallet_addEthereumChain',
             params: [
               {
                 chainId: targetChainId,
                 chainName: 'Custom Network',
                 rpcUrls: ['https://...'],
-                nativeCurrency: {
-                  name: 'ETH',
-                  symbol: 'ETH',
-                  decimals: 18,
-                },
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
                 blockExplorerUrls: ['https://...'],
               },
             ],
@@ -212,14 +162,5 @@ export function useMetaMaskWallet(): WalletHookReturn {
     }
   };
 
-  return {
-    connect,
-    disconnect,
-    address,
-    loading,
-    error,
-    isInstalled,
-    chainId,
-    switchNetwork,
-  };
+  return { connect, disconnect, address, loading, error, isInstalled, chainId, switchNetwork };
 }

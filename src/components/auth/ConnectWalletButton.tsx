@@ -33,11 +33,14 @@ export default function ConnectWalletButton({
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const handleConnect = (walletAddress: string) => {
-    setAddress(walletAddress);
-    onConnect?.(walletAddress);
-    setIsModalOpen(false);
-  };
+  const handleConnect = (walletAddress: string, type: string) => {
+  setAddress(walletAddress);
+  setWalletType(type);
+  localStorage.setItem("wallet_address", walletAddress);
+  localStorage.setItem("wallet_type", type);
+  onConnect?.(walletAddress);
+  setIsModalOpen(false);
+};
 
   const handleButtonClick = async () => {
     if (address) {
@@ -65,6 +68,7 @@ export default function ConnectWalletButton({
   };
 
   // Tampilkan icon wallet di tombol utama pake local image
+  // Tampilkan icon wallet di tombol utama
   const getWalletIcon = () => {
     if (walletType === "binance") {
       return (
@@ -84,6 +88,18 @@ export default function ConnectWalletButton({
           <Image
             src="/images/wallets/metamask-logo.png"
             alt="MetaMask"
+            width={20}
+            height={20}
+            className="object-contain"
+          />
+        </div>
+      );
+    } else if (walletType === "trust") {  // ✅ Tambah ini
+      return (
+        <div className="w-5 h-5 rounded-full overflow-hidden shrink-0">
+          <Image
+            src="/images/wallets/trust-wallet-logo.png"
+            alt="Trust Wallet"
             width={20}
             height={20}
             className="object-contain"

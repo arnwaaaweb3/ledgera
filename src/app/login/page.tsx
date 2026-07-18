@@ -4,8 +4,11 @@ import { useState } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { GREETINGS } from "@/src/constants/greetings";
 import { useTypingAnimation } from "@/src/hooks/useTypingAnimation";
+
+// 1. IMPORT KOMPONEN LOGIN
 import GoogleLoginButton from "@/src/components/auth/GoogleLoginButton";
-import ConnectWalletButton from "@/src/components/auth/ConnectWalletButton"; // <-- 1. IMPORT BARU
+import MicrosoftLoginButton from "@/src/components/auth/MicrosoftLoginButton"; // <-- BARU DITAMBAHKAN
+import ConnectWalletButton from "@/src/components/auth/ConnectWalletButton";
 import EmailLoginForm from "@/src/components/auth/EmailLoginForm";
 
 export default function LoginPage() {
@@ -14,9 +17,6 @@ export default function LoginPage() {
 
     // State untuk menyimpan token dari Cloudflare Turnstile
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-
-    // Opsional: State untuk menyimpan data wallet jika butuh di komponen ini
-    // const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
     return (
         <main className="flex h-screen w-full overflow-hidden">
@@ -97,16 +97,23 @@ export default function LoginPage() {
                     {/* 1. Google Login */}
                     <GoogleLoginButton turnstileToken={turnstileToken} />
 
-                    {/* 2. Connect Wallet Button (BARU) */}
+                    {/* 2. Microsoft Login (BARU) */}
+                    <div className="mt-3">
+                        <MicrosoftLoginButton 
+                            turnstileToken={turnstileToken}
+                            clientId={process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID || ""}
+                            redirectUri={process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI || "http://localhost:3000/auth/microsoft/callback"}
+                        />
+                    </div>
+
+                    {/* 3. Connect Wallet Button */}
                     <div className="mt-3">
                         <ConnectWalletButton 
                             onConnect={(address) => {
                                 console.log("✅ Wallet connected:", address);
-                                // setWalletAddress(address); // Aktifkan jika perlu disimpan di state halaman ini
                             }}
                             onDisconnect={() => {
                                 console.log("❌ Wallet disconnected");
-                                // setWalletAddress(null);
                             }}
                         />
                     </div>
@@ -121,7 +128,7 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* 3. Email Login */}
+                    {/* 4. Email Login */}
                     <EmailLoginForm turnstileToken={turnstileToken} />
 
                     <p className="mt-8 text-center text-xs text-brand-dark/60">
