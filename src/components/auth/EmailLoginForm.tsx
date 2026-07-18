@@ -3,12 +3,17 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 
-export default function EmailLoginForm() {
+// 1. Tambahkan Interface untuk Props agar TypeScript tidak Eror
+interface EmailLoginFormProps {
+  turnstileToken: string | null;
+}
+
+export default function EmailLoginForm({ turnstileToken }: EmailLoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPasswordField, setShowPasswordField] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [loading, setLoading] = useState(false); // Tambahkan loading state
+  const [loading, setLoading] = useState(false); 
   
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
@@ -25,18 +30,24 @@ export default function EmailLoginForm() {
       // Langkah 1: Tampilkan field password
       setShowPasswordField(true);
     } else {
+      // Validasi Tambahan sebelum request
+      if (!turnstileToken) {
+        alert("Sistem sedang memverifikasi browser Anda, mohon tunggu sebentar.");
+        return;
+      }
+
       // Langkah 2: Kirim ke API
       setLoading(true);
       try {
         const response = await axios.post("/api/auth/email", {
           email,
           password,
+          turnstile_token: turnstileToken, // 2. Sertakan token Turnstile ke payload
         }, { timeout: 10000 });
 
         if (response.data.success) {
           const { token, user } = response.data;
           
-          // SAMAKAN PERSIS DENGAN LOGIC GOOGLE LOGIN KAMU
           localStorage.setItem("auth_token", token);
           localStorage.setItem("user", JSON.stringify(user));
           localStorage.setItem("token_expiry", (Date.now() + 3600000).toString());
@@ -70,7 +81,7 @@ export default function EmailLoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email address"
           required
-          disabled={loading} // Disable saat loading
+          disabled={loading} 
           className="w-full px-3 py-2.5 bg-white border border-brand-dark/10 rounded-lg text-sm text-brand-dark placeholder-brand-dark/30 focus:outline-none focus:ring-2 focus:ring-brand-pink/30 focus:border-brand-pink transition duration-200 disabled:bg-gray-50 disabled:text-gray-500"
         />
       </div>
@@ -85,7 +96,7 @@ export default function EmailLoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             required
-            disabled={loading} // Disable saat loading
+            disabled={loading} 
             className="w-full px-3 py-2.5 pr-10 bg-white border border-brand-dark/10 rounded-lg text-sm text-brand-dark placeholder-brand-dark/30 focus:outline-none focus:ring-2 focus:ring-brand-pink/30 focus:border-brand-pink transition duration-200 disabled:bg-gray-50 disabled:text-gray-500"
           />
           
@@ -111,11 +122,20 @@ export default function EmailLoginForm() {
         </div>
       )}
 
-      {/* Submit Button dengan Loading State */}
+      {/* Submit Button dengan Loading State & Turnstile blocker */}
       <button
         type="submit"
-        disabled={loading}
-        className="w-full py-2.5 bg-brand-dark text-white text-sm font-semibold rounded-lg hover:bg-brand-dark/90 focus:outline-none focus:ring-2 focus:ring-brand-dark focus:ring-offset-2 focus:ring-offset-surface transition duration-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        disabled={loading || !turnstileToken} // 3. Kunci tombol jika token Turnstile belum siap
+        className="w-full 
+        py-2.5 bg-brand-dark 
+        text-white text-sm 
+        font-semibold cursor-pointer
+        rounded-lg hover:bg-brand-dark/90 
+        focus:outline-none focus:ring-2 
+        focus:ring-brand-dark focus:ring-offset-2 
+        focus:ring-offset-surface transition duration-200 
+        disabled:opacity-70
+        flex items-center justify-center gap-2"
       >
         {loading ? (
           <>

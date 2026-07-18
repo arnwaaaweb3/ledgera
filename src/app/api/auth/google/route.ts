@@ -11,8 +11,9 @@ const googleClient = new OAuth2Client(
 
 export async function POST(request: NextRequest) {
   try {
-    const { access_token } = await request.json();
+    const { access_token, turnstile_token } = await request.json();
 
+    // 1. Validasi Input Dasar
     if (!access_token) {
       return NextResponse.json(
         { error: 'Access token is required' },
@@ -20,7 +21,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ Verifikasi access token dengan getTokenInfo
+    if (!turnstile_token) {
+      return NextResponse.json(
+        { error: 'Security token (Turnstile) is missing' },
+        { status: 400 }
+      );
+    }
+
+    // 2. Verifikasi Token Cloudflare Turnstile ke Server Cloudflare
+    const secretKey = process.env.TURNSTILE_SECRET_KEY || "1x00000000000000000000AA"; // Dummy fallback untuk local dev
+    
+    const turnstileResponse = await fetch(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secret: secretKey,
+          response: turnstile_token,
+        }),
+      }
+    );
+
+    const turnstileOutcome = await turnstileResponse.json();
+
+    if (!turnstileOutcome.success) {
+      console.error('Cloudflare Turnstile verification failed:', turnstileOutcome);
+      return NextResponse.json(
+        { error: 'Security verification failed. Failed bot test.' },
+        { status: 403 }
+      );
+    }
+
+    console.log('Cloudflare Turnstile verified successfully.');
+
+    // Verifikasi access token dengan getTokenInfo
     const tokenInfo = await googleClient.getTokenInfo(access_token);
 
     // TokenInfo hanya punya: email, sub (googleId), aud, exp, iat, iss, etc.
@@ -36,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ Dapatkan user info dari endpoint Google People API
+    // Dapatkan user info dari endpoint Google People API
     let displayName = email?.split('@')[0] || 'User';
     let picture: string | null = null;
 
@@ -56,11 +93,10 @@ export async function POST(request: NextRequest) {
         picture = userInfo.picture || null;
       }
     } catch (userInfoError) {
-      console.warn('⚠️ Could not fetch user info from Google API:', userInfoError);
-      // Lanjutkan dengan displayName dari email
+      console.warn('Could not fetch user info from Google API:', userInfoError);
     }
 
-    console.log('✅ Google verification successful:', { email, displayName });
+    console.log('Google verification successful:', { email, displayName });
 
     // Cari atau buat user di database
     const user = await prisma.user.upsert({
@@ -108,7 +144,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Google auth error:', error);
+    console.error('Google auth error:', error);
     
     let errorMessage = 'Authentication failed';
     let statusCode = 500;

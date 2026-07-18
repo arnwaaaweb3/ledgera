@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
 import { Ledger, Stack_Sans_Text } from "next/font/google";
-import { GoogleOAuthProvider } from '@react-oauth/google'
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import "./globals.css";
 
 const ledger = Ledger({
   variable: "--font-ledger",
   subsets: ["latin"],
   weight: "400",
+  // Menambahkan fallback untuk font judul/logo agar tetap formal tepercaya
+  fallback: ["Times New Roman", "Times", "serif"],
 });
 
 const stackSansText = Stack_Sans_Text({
   variable: "--font-stack-sans-text",
   subsets: ["latin"],
+  // SOLUSI: Secara manual mendefinisikan fallback font komparatif terpercaya ala fintech P2P profesional
+  fallback: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
 });
 
 export const metadata: Metadata = {

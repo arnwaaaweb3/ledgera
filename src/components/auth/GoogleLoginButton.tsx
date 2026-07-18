@@ -4,15 +4,27 @@ import { useState } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
 import axios from "axios";
 
-export default function GoogleLoginButton() {
+// Tambahkan interface props di sini
+interface GoogleLoginButtonProps {
+  turnstileToken: string | null;
+}
+
+export default function GoogleLoginButton({ turnstileToken }: GoogleLoginButtonProps) {
   const [loading, setLoading] = useState(false);
 
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
+      // Validasi: Cegah pengiriman data jika token Turnstile belum siap
+      if (!turnstileToken) {
+        alert("Sistem keamanan sedang memverifikasi koneksi Anda. Mohon coba sesaat lagi.");
+        return;
+      }
+
       setLoading(true);
       try {
         const response = await axios.post("/api/auth/google", {
           access_token: tokenResponse.access_token,
+          turnstile_token: turnstileToken, // Kirim token Turnstile ke backend untuk diverifikasi
         }, { timeout: 10000 });
 
         if (response.data.success) {
@@ -21,7 +33,6 @@ export default function GoogleLoginButton() {
           localStorage.setItem("user", JSON.stringify(user));
           localStorage.setItem("token_expiry", (Date.now() + 3600000).toString());
           
-          // Nanti ganti dengan toast notification (misal: sonner atau react-hot-toast)
           alert(`Hi! Welcome ${user.name || "User"}!`);
           window.location.replace("/dashboard");
         } else {
@@ -54,13 +65,13 @@ export default function GoogleLoginButton() {
   return (
     <button
       onClick={() => login()}
-      disabled={loading}
+      disabled={loading || !turnstileToken} // Button otomatis disabled jika token belum ter-generate
       className="w-full flex items-center justify-center gap-3 py-3 px-4 
                  bg-white border border-gray-300 rounded-lg 
                  hover:bg-gray-50 hover:shadow-md 
                  transition-all duration-200
                  text-brand-dark font-medium 
-                 disabled:opacity-50 disabled:cursor-not-allowed"
+                 disabled:opacity-50 cursor-pointer"
     >
       {loading ? (
         <>
