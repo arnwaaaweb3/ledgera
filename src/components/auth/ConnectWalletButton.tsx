@@ -106,6 +106,15 @@ export default function ConnectWalletButton({
           />
         </div>
       );
+    } else if (walletType === "phantom") {
+      return (
+        <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 bg-[#534BB1] flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 128 128" fill="none">
+            <circle cx="64" cy="64" r="64" fill="white" fillOpacity="0.2" />
+            <circle cx="64" cy="64" r="18" fill="white" />
+          </svg>
+        </div>
+      );
     }
     return null;
   };

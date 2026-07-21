@@ -1,22 +1,55 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
+import Image from "next/image";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { GREETINGS } from "@/src/constants/greetings";
 import { useTypingAnimation } from "@/src/hooks/useTypingAnimation";
 
-// 1. IMPORT KOMPONEN LOGIN
 import GoogleLoginButton from "@/src/components/auth/GoogleLoginButton";
-import MicrosoftLoginButton from "@/src/components/auth/MicrosoftLoginButton"; // <-- BARU DITAMBAHKAN
+import MicrosoftLoginButton from "@/src/components/auth/MicrosoftLoginButton";
 import ConnectWalletButton from "@/src/components/auth/ConnectWalletButton";
 import EmailLoginForm from "@/src/components/auth/EmailLoginForm";
 
 export default function LoginPage() {
-    // Hook animasi sekarang cuma 1 baris! 🪄
     const currentText = useTypingAnimation(GREETINGS);
-
-    // State untuk menyimpan token dari Cloudflare Turnstile
+    
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+    const [isVerifying, setIsVerifying] = useState(true);
+    const [turnstileKey, setTurnstileKey] = useState(0);
+    const [turnstileLoaded, setTurnstileLoaded] = useState(false);
+
+    const handleTurnstileSuccess = useCallback((token: string) => {
+        setTurnstileToken(token);
+        setIsVerifying(false);
+        setTurnstileLoaded(true);
+        console.log("🛡️ [TURNSTILE] Verified successfully");
+    }, []);
+
+    const handleTurnstileError = useCallback(() => {
+        console.warn("🔄 [TURNSTILE] Error, auto-retrying...");
+        setTimeout(() => {
+            setTurnstileKey((prev) => prev + 1);
+        }, 2000);
+    }, []);
+
+    const handleTurnstileExpire = useCallback(() => {
+        console.log("🔄 [TURNSTILE] Expired, refreshing...");
+        setTurnstileToken(null);
+        setIsVerifying(true);
+        setTurnstileKey((prev) => prev + 1);
+    }, []);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (isVerifying && !turnstileToken && !turnstileLoaded) {
+                console.warn("⏰ [TURNSTILE] Timeout, forcing retry...");
+                setTurnstileKey((prev) => prev + 1);
+            }
+        }, 5000);
+        
+        return () => clearTimeout(timeout);
+    }, [isVerifying, turnstileToken, turnstileLoaded]);
 
     return (
         <main className="flex h-screen w-full overflow-hidden">
@@ -42,7 +75,19 @@ export default function LoginPage() {
                     <div className="absolute bottom-1/3 left-0 w-100 h-100 rounded-full bg-white/5 blur-2xl"></div>
                 </div>
 
-                {/* LAYER 4: TEXT CONTENT */}
+                {/* LAYER 4: LOGO - Pojok Kiri Atas */}
+                <div className="absolute top-8 left-8 z-20">
+                    <Image
+                        src="/images/logo/logo-lux2.png"
+                        alt="Logo"
+                        width={210}
+                        height={70}
+                        className="object-contain"
+                        priority
+                    />
+                </div>
+
+                {/* LAYER 5: TEXT CONTENT */}
                 <div className="max-w-2xl relative z-10">
                     <h1 className="text-5xl md:text-6xl lg:text-7xl text-white tracking-tight leading-tight mb-6">
                         {currentText}
@@ -77,29 +122,39 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    {/* Cloudflare Turnstile - Jalankan secara diam-diam (Invisible) */}
+                    {/* Cloudflare Turnstile - Invisible mode dengan fix */}
                     <div className="hidden">
                         <Turnstile
+                            key={turnstileKey}
                             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
-                            onSuccess={(token) => {
-                                setTurnstileToken(token);
-                                console.log("🛡️ [TURNSTILE SUCCESS] Generate Token:", token);
-                            }}
-                            onError={() => {
-                                console.error("Turnstile verification failed.");
-                            }}
-                            onExpire={() => {
-                                setTurnstileToken(null);
+                            onSuccess={handleTurnstileSuccess}
+                            onError={handleTurnstileError}
+                            onExpire={handleTurnstileExpire}
+                            options={{
+                                retry: "auto",
+                                retryInterval: 3000,
+                                refreshExpired: "auto",
+                                responseField: false,
+                                theme: "light",
+                                size: "invisible",
                             }}
                         />
                     </div>
 
+                    {/* Loading subtle - tanpa error UI */}
+                    {isVerifying && !turnstileToken && (
+                        <div className="mb-4 flex items-center justify-center gap-2 text-xs text-brand-dark/40">
+                            <div className="w-3 h-3 border-2 border-brand-pink/30 border-t-brand-pink rounded-full animate-spin"></div>
+                            <span>Verifying your connection...</span>
+                        </div>
+                    )}
+
                     {/* 1. Google Login */}
                     <GoogleLoginButton turnstileToken={turnstileToken} />
 
-                    {/* 2. Microsoft Login (BARU) */}
+                    {/* 2. Microsoft Login */}
                     <div className="mt-3">
-                        <MicrosoftLoginButton 
+                        <MicrosoftLoginButton
                             turnstileToken={turnstileToken}
                             clientId={process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID || ""}
                             redirectUri={process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI || "http://localhost:3000/auth/microsoft/callback"}
@@ -108,7 +163,7 @@ export default function LoginPage() {
 
                     {/* 3. Connect Wallet Button */}
                     <div className="mt-3">
-                        <ConnectWalletButton 
+                        <ConnectWalletButton
                             onConnect={(address) => {
                                 console.log("✅ Wallet connected:", address);
                             }}

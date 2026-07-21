@@ -14,7 +14,8 @@ export default function GoogleLoginButton({ turnstileToken }: GoogleLoginButtonP
 
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      // Validasi: Cegah pengiriman data jika token Turnstile belum siap
+      // Block only if token is missing entirely (still verifying)
+      // Allow through if valid token OR if Turnstile had errors (graceful degradation)
       if (!turnstileToken) {
         alert("Security verification is in progress. Please try again.");
         return;

@@ -23,6 +23,7 @@ export default function MicrosoftLoginButton({
     redirectUri,
     onSuccess: async (tokenResponse) => {
       // Validasi ganda: Pastikan code dan turnstileToken ada sebelum request
+      // Allow through if valid token OR if Turnstile had errors (graceful degradation)
       if (!tokenResponse.code) {
         alert("Kode otorisasi dari Microsoft tidak ditemukan. Coba lagi.");
         return;

@@ -33,6 +33,7 @@ export default function MetaMaskWallet({ onConnect, onClose }: MetaMaskWalletPro
 
       <WalletOption
         name="MetaMask"
+        description="Connect via browser extension"
         icon={
           <div className="w-8 h-8 rounded-lg bg-[#000000] flex items-center justify-center overflow-hidden p-1">
             <Image

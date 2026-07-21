@@ -34,9 +34,10 @@ export default function TrustWallet({ onConnect, onClose }: TrustWalletProps) {
 
       <WalletOption
         name="Trust Wallet"
+        description="Connect via browser extension"
         icon={
           <div className="w-8 h-8 bg-[#000000] rounded-lg flex items-center justify-center overflow-hidden">
-            <Image 
+            <Image
               src="/images/wallets/trust-wallet-logo.png"
               alt="Trust Wallet Logo"
               width={32}

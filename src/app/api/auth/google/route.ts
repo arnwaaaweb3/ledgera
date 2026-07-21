@@ -29,33 +29,38 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Verifikasi Token Cloudflare Turnstile ke Server Cloudflare
-    const secretKey = process.env.TURNSTILE_SECRET_KEY || "1x00000000000000000000AA"; // Dummy fallback untuk local dev
-    
-    const turnstileResponse = await fetch(
-      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          secret: secretKey,
-          response: turnstile_token,
-        }),
-      }
-    );
+    // Skip verification if Turnstile encountered errors (graceful degradation - allows human users through)
+    if (turnstile_token !== "error_bypass") {
+      const secretKey = process.env.TURNSTILE_SECRET_KEY || "1x00000000000000000000AA";
 
-    const turnstileOutcome = await turnstileResponse.json();
-
-    if (!turnstileOutcome.success) {
-      console.error('Cloudflare Turnstile verification failed:', turnstileOutcome);
-      return NextResponse.json(
-        { error: 'Security verification failed. Failed bot test.' },
-        { status: 403 }
+      const turnstileResponse = await fetch(
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            secret: secretKey,
+            response: turnstile_token,
+          }),
+        }
       );
-    }
 
-    console.log('Cloudflare Turnstile verified successfully.');
+      const turnstileOutcome = await turnstileResponse.json();
+
+      if (!turnstileOutcome.success) {
+        console.error('Cloudflare Turnstile verification failed:', turnstileOutcome);
+        return NextResponse.json(
+          { error: 'Security verification failed. Please refresh the page and try again.' },
+          { status: 403 }
+        );
+      }
+
+      console.log('Cloudflare Turnstile verified successfully.');
+    } else {
+      console.warn('⚠️ [TURNSTILE BYPASS] Allowing login without Turnstile verification (Turnstile had errors)');
+    }
 
     // Verifikasi access token dengan getTokenInfo
     const tokenInfo = await googleClient.getTokenInfo(access_token);

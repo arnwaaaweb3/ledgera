@@ -15,14 +15,13 @@ interface WalletModalProps {
 }
 
 export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalProps) {
-  // Efek untuk close dengan Escape
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isOpen) {
         onClose();
       }
     };
-    
+
     if (isOpen) {
       window.addEventListener("keydown", handleEsc);
       document.body.style.overflow = "hidden";
@@ -36,7 +35,6 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
 
   if (!isOpen) return null;
 
-  // Handler wrapper untuk kirim type wallet
   const handleBinanceConnect = (address: string) => {
     onConnect(address, "binance");
   };
@@ -54,20 +52,20 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
     >
       {/* Overlay Blur */}
-      <div 
+      <div
         className="absolute inset-0 bg-brand-dark/40 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       ></div>
 
       {/* Modal Box */}
       <div className="relative w-full max-w-md bg-surface rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-brand-dark">
@@ -97,7 +95,7 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
 
           {/* WalletConnect */}
           <WalletConnectWallet onConnect={handleWalletConnect} onClose={onClose} />
-          
+
         </div>
 
         {/* Footer */}

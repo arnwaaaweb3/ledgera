@@ -63,5 +63,13 @@ declare global {
   interface Window {
     ethereum?: EthereumProvider;
     BinanceChain?: BinanceProvider;
+    // Phantom injects here - their primary slot for Ethereum support
+    phantom?: {
+      ethereum?: EthereumProvider;
+    };
+    // Trust Wallet also uses this slot
+    trustWallet?: {
+      ethereum?: EthereumProvider;
+    };
   }
 }

@@ -33,9 +33,10 @@ export default function BinanceWallet({ onConnect, onClose }: BinanceWalletProps
 
       <WalletOption
         name="Binance Wallet"
+        description="Connect via browser extension"
         icon={
           <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center overflow-hidden">
-            <Image 
+            <Image
               src="/images/wallets/binance-logo.png"
               alt="Binance Wallet Logo"
               width={32}

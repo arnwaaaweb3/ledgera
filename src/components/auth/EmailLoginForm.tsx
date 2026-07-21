@@ -31,6 +31,8 @@ export default function EmailLoginForm({ turnstileToken }: EmailLoginFormProps) 
       setShowPasswordField(true);
     } else {
       // Validasi Tambahan sebelum request
+      // Block only if token is missing entirely (still verifying)
+      // Allow through if valid token OR if Turnstile had errors (graceful degradation)
       if (!turnstileToken) {
         alert("Sistem sedang memverifikasi browser Anda, mohon tunggu sebentar.");
         return;

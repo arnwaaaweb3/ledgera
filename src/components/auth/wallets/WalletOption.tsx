@@ -6,7 +6,8 @@ interface WalletOptionProps {
   isInstalled: boolean;
   onClick: () => void;
   loading?: boolean;
-  installUrl?: string; // Tambahan untuk link install
+  installUrl?: string;
+  description?: string; // Optional description text
 }
 
 export default function WalletOption({
@@ -16,13 +17,14 @@ export default function WalletOption({
   onClick,
   loading = false,
   installUrl,
+  description,
 }: WalletOptionProps) {
   return (
     <button
       onClick={onClick}
       disabled={!isInstalled || loading}
-      className="w-full flex items-center gap-4 p-4 rounded-xl 
-                 border-2 border-gray-200 hover:border-brand-pink 
+      className="w-full flex items-center gap-4 p-4 rounded-xl
+                 border-2 border-gray-200 hover:border-brand-pink
                  transition-all duration-200 hover:shadow-md
                  disabled:opacity-50 disabled:cursor-not-allowed bg-white"
     >
@@ -35,17 +37,21 @@ export default function WalletOption({
       <div className="flex-1 text-left">
         <p className="font-semibold text-brand-dark">{name}</p>
         <div className="flex items-center gap-2">
-          <p className="text-xs text-gray-500 ">
-            {isInstalled ? "✅ Installed" : "⚠️ Not installed"}
-          </p>
+          {description ? (
+            <p className="text-xs text-gray-500">{description}</p>
+          ) : (
+            <p className="text-xs text-gray-500">
+              {isInstalled ? "Ready to connect" : "Not installed"}
+            </p>
+          )}
           {!isInstalled && installUrl && (
             <a
               href={installUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-brand-pink hover:text-brand-pink/80 underline 
-                         cursor-default" // ← Cursor default, bukan pointer!
-              onClick={(e) => e.stopPropagation()} // Mencegah trigger button
+              className="text-xs text-brand-pink hover:text-brand-pink/80 underline
+                         cursor-default"
+              onClick={(e) => e.stopPropagation()}
             >
               Install Here →
             </a>
