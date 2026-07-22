@@ -1,0 +1,48 @@
+{
+  "app": {
+    "title": "Ledgera",
+    "tagline": "Trusted transaction management platform"
+  },
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "login": "Login",
+    "logout": "Logout"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signInTitle": "Welcome Back",
+    "signInSubtitle": "Sign in with your existing account",
+    "signUpTitle": "Create Account",
+    "signUpSubtitle": "Register to get started",
+    "email": "Email Address",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "signInWithGoogle": "Sign in with Google",
+    "signInWithMicrosoft": "Sign in with Microsoft",
+    "signInWithWallet": "Connect Wallet",
+    "orContinueWithEmail": "or continue with email",
+    "agreeToTerms": "By signing in, you agree to our",
+    "termsAndConditions": "Terms and Conditions",
+    "privacyPolicy": "Privacy Policy"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back! Here's your overview",
+    "comingSoon": "Content coming soon..."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Try again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit"
+  }
+}

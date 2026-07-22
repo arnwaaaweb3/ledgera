@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { Ledger, Stack_Sans_Text } from "next/font/google";
+import { Ledger, Stack_Sans_Text, Geist } from "next/font/google";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const ledger = Ledger({
   variable: "--font-ledger",
@@ -31,7 +34,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${ledger.variable} ${stackSansText.variable} h-full antialiased`}
+      className={cn("h-full", "antialiased", ledger.variable, stackSansText.variable, "font-sans", geist.variable)}
     >
       <body className="min-h-full flex flex-col bg-surface text-brand-dark">
         {/* WRAP dengan GoogleOAuthProvider */}

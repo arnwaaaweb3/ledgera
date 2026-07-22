@@ -1,11 +1,23 @@
-//src/app/auth/microsoft/callback/page.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 export default function MicrosoftCallback() {
   const searchParams = useSearchParams();
+  const [dots, setDots] = useState("");
+
+  useEffect(() => {
+    // Animasi titik-titik
+    const interval = setInterval(() => {
+      setDots((prev) => {
+        if (prev.length >= 3) return "";
+        return prev + ".";
+      });
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const code = searchParams.get("code");
@@ -13,27 +25,21 @@ export default function MicrosoftCallback() {
     const error = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
 
-    // Pastikan window.opener ada (artinya halaman ini dibuka dari popup)
     if (window.opener) {
       if (error) {
-        // Kirim pesan error ke jendela utama (LoginPage)
         window.opener.postMessage(
-          { type: "MICROSOFT_AUTH_ERROR", error: errorDescription || error }, 
-          window.location.origin // Ganti dengan "http://localhost:6969" jika origin bermasalah
+          { type: "MICROSOFT_AUTH_ERROR", error: errorDescription || error },
+          window.location.origin
         );
       } else if (code && state) {
-        // Kirim kode sukses ke jendela utama (LoginPage)
         window.opener.postMessage(
-          { type: "MICROSOFT_AUTH_SUCCESS", code, state }, 
+          { type: "MICROSOFT_AUTH_SUCCESS", code, state },
           window.location.origin
         );
       }
-      
-      // Tutup popup segera setelah mengirim pesan
       window.close();
     } else {
-      // Fallback jika user membuka URL ini langsung di tab baru (bukan dari popup)
-      console.error("Tidak ada window.opener. Login harus dilakukan via popup.");
+      console.error("No window.opener available. Login must be initiated via popup.");
     }
   }, [searchParams]);
 
@@ -43,8 +49,10 @@ export default function MicrosoftCallback() {
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
-      <p className="text-brand-dark font-medium">Memproses login Microsoft...</p>
-      <p className="text-sm text-brand-dark/50 mt-2">Jendela ini akan menutup otomatis.</p>
+      <p className="text-brand-dark font-medium">
+        Processing login via Microsoft {dots}
+      </p>
+      <p className="text-sm text-brand-dark/50 mt-2">This window will automatically close in a few seconds.</p>
     </div>
   );
 }

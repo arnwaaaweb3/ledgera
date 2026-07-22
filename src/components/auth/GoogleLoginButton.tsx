@@ -1,31 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
 import axios from "axios";
 
-// Tambahkan interface props di sini
-interface GoogleLoginButtonProps {
-  turnstileToken: string | null;
-}
-
-export default function GoogleLoginButton({ turnstileToken }: GoogleLoginButtonProps) {
+export default function GoogleLoginButton() {
   const [loading, setLoading] = useState(false);
 
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      // Block only if token is missing entirely (still verifying)
-      // Allow through if valid token OR if Turnstile had errors (graceful degradation)
-      if (!turnstileToken) {
-        alert("Security verification is in progress. Please try again.");
-        return;
-      }
-
       setLoading(true);
       try {
         const response = await axios.post("/api/auth/google", {
           access_token: tokenResponse.access_token,
-          turnstile_token: turnstileToken, // Kirim token Turnstile ke backend untuk diverifikasi
         }, { timeout: 10000 });
 
         if (response.data.success) {
@@ -33,11 +20,12 @@ export default function GoogleLoginButton({ turnstileToken }: GoogleLoginButtonP
           localStorage.setItem("auth_token", token);
           localStorage.setItem("user", JSON.stringify(user));
           localStorage.setItem("token_expiry", (Date.now() + 3600000).toString());
-          
-          alert(`Hi! Welcome ${user.name || "User"}!`);
+
+          document.cookie = `auth_token=${token}; path=/; max-age=3600; SameSite=Lax; Secure`;
+
           window.location.replace("/dashboard");
         } else {
-          alert(`${response.data.message || "Authentication failed"}`);
+          alert(response.data.message || "Authentication failed");
         }
       } catch (error: unknown) {
         let errorMessage = "Login failed. Please try again.";
@@ -46,7 +34,7 @@ export default function GoogleLoginButton({ turnstileToken }: GoogleLoginButtonP
         } else if (error instanceof Error) {
           errorMessage = error.message;
         }
-        alert(`${errorMessage}`);
+        alert(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -58,7 +46,8 @@ export default function GoogleLoginButton({ turnstileToken }: GoogleLoginButtonP
         if (errorCode.includes("popup_closed")) errorMessage = "Login popup was closed.";
         else if (errorCode.includes("access_denied")) errorMessage = "Access denied.";
       }
-      alert(`${errorMessage}`);
+      alert(errorMessage);
+      setLoading(false);
     },
     flow: "implicit",
   });
@@ -66,12 +55,12 @@ export default function GoogleLoginButton({ turnstileToken }: GoogleLoginButtonP
   return (
     <button
       onClick={() => login()}
-      disabled={loading || !turnstileToken} // Button otomatis disabled jika token belum ter-generate
-      className="w-full flex items-center justify-center gap-3 py-3 px-4 
-                 bg-white border border-gray-300 rounded-lg 
-                 hover:bg-gray-50 hover:shadow-md 
+      disabled={loading}
+      className="w-full flex items-center justify-center gap-3 py-3 px-4
+                 bg-white border border-gray-300 rounded-lg
+                 hover:bg-gray-50 hover:shadow-md
                  transition-all duration-200
-                 text-brand-dark font-medium 
+                 text-brand-dark font-medium
                  disabled:opacity-50 cursor-pointer"
     >
       {loading ? (

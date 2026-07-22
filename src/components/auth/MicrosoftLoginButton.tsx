@@ -1,20 +1,17 @@
-// src/components/auth/MicrosoftLoginButton.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useMicrosoftLogin } from "@/src/hooks/useMicrosoftLogin";
 
 interface MicrosoftLoginButtonProps {
-  turnstileToken: string | null;
   clientId: string;
   redirectUri: string;
 }
 
-export default function MicrosoftLoginButton({ 
-  turnstileToken, 
-  clientId, 
-  redirectUri 
+export default function MicrosoftLoginButton({
+  clientId,
+  redirectUri
 }: MicrosoftLoginButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -22,30 +19,19 @@ export default function MicrosoftLoginButton({
     clientId,
     redirectUri,
     onSuccess: async (tokenResponse) => {
-      // Validasi ganda: Pastikan code dan turnstileToken ada sebelum request
-      // Allow through if valid token OR if Turnstile had errors (graceful degradation)
       if (!tokenResponse.code) {
-        alert("Kode otorisasi dari Microsoft tidak ditemukan. Coba lagi.");
-        return;
-      }
-      if (!turnstileToken) {
-        alert("Sistem keamanan sedang memverifikasi koneksi Anda. Mohon coba sesaat lagi.");
+        alert("No authorization code from Microsoft were found. Please try again!");
         return;
       }
 
       setLoading(true);
-      
-      // 🔍 DEBUG: Lihat di Console Browser apa yang mau dikirim
-      const payload = {
-        code: tokenResponse.code,
-        turnstile_token: turnstileToken,
-      };
-      console.log("🚀 Mengirim payload ke backend:", payload);
 
       try {
-        const response = await axios.post("/api/auth/microsoft", payload, { 
+        const response = await axios.post("/api/auth/microsoft", {
+          code: tokenResponse.code,
+        }, {
           timeout: 10000,
-          headers: { 'Content-Type': 'application/json' } // Paksa header JSON
+          headers: { 'Content-Type': 'application/json' }
         });
 
         if (response.data.success) {
@@ -53,11 +39,12 @@ export default function MicrosoftLoginButton({
           localStorage.setItem("auth_token", token);
           localStorage.setItem("user", JSON.stringify(user));
           localStorage.setItem("token_expiry", (Date.now() + 3600000).toString());
-          
-          alert(`Hi! Welcome ${user.displayName || "User"}!`);
+
+          document.cookie = `auth_token=${token}; path=/; max-age=3600; SameSite=Lax; Secure`;
+
           window.location.replace("/dashboard");
         } else {
-          alert(`${response.data.message || "Authentication failed"}`);
+          alert(response.data.message || "Authentication failed");
         }
       } catch (error: unknown) {
         let errorMessage = "Login failed. Please try again.";
@@ -76,17 +63,17 @@ export default function MicrosoftLoginButton({
     },
   });
 
-  const isDisabled = loading || msLoading || !turnstileToken;
+  const isDisabled = loading || msLoading;
 
   return (
     <button
       onClick={() => msLogin()}
       disabled={isDisabled}
-      className="w-full flex items-center justify-center gap-3 py-3 px-4 
-                 bg-white border border-gray-300 rounded-lg 
-                 hover:bg-gray-50 hover:shadow-md 
+      className="w-full flex items-center justify-center gap-3 py-3 px-4
+                 bg-white border border-gray-300 rounded-lg
+                 hover:bg-gray-50 hover:shadow-md
                  transition-all duration-200
-                 text-brand-dark font-medium 
+                 text-brand-dark font-medium
                  disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
     >
       {loading || msLoading ? (

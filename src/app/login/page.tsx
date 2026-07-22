@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { GREETINGS } from "@/src/constants/greetings";
@@ -13,43 +12,6 @@ import EmailLoginForm from "@/src/components/auth/EmailLoginForm";
 
 export default function LoginPage() {
     const currentText = useTypingAnimation(GREETINGS);
-    
-    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-    const [isVerifying, setIsVerifying] = useState(true);
-    const [turnstileKey, setTurnstileKey] = useState(0);
-    const [turnstileLoaded, setTurnstileLoaded] = useState(false);
-
-    const handleTurnstileSuccess = useCallback((token: string) => {
-        setTurnstileToken(token);
-        setIsVerifying(false);
-        setTurnstileLoaded(true);
-        console.log("🛡️ [TURNSTILE] Verified successfully");
-    }, []);
-
-    const handleTurnstileError = useCallback(() => {
-        console.warn("🔄 [TURNSTILE] Error, auto-retrying...");
-        setTimeout(() => {
-            setTurnstileKey((prev) => prev + 1);
-        }, 2000);
-    }, []);
-
-    const handleTurnstileExpire = useCallback(() => {
-        console.log("🔄 [TURNSTILE] Expired, refreshing...");
-        setTurnstileToken(null);
-        setIsVerifying(true);
-        setTurnstileKey((prev) => prev + 1);
-    }, []);
-
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            if (isVerifying && !turnstileToken && !turnstileLoaded) {
-                console.warn("⏰ [TURNSTILE] Timeout, forcing retry...");
-                setTurnstileKey((prev) => prev + 1);
-            }
-        }, 5000);
-        
-        return () => clearTimeout(timeout);
-    }, [isVerifying, turnstileToken, turnstileLoaded]);
 
     return (
         <main className="flex h-screen w-full overflow-hidden">
@@ -122,40 +84,24 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    {/* Cloudflare Turnstile - Invisible mode dengan fix */}
-                    <div className="hidden">
-                        <Turnstile
-                            key={turnstileKey}
-                            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
-                            onSuccess={handleTurnstileSuccess}
-                            onError={handleTurnstileError}
-                            onExpire={handleTurnstileExpire}
-                            options={{
-                                retry: "auto",
-                                retryInterval: 3000,
-                                refreshExpired: "auto",
-                                responseField: false,
-                                theme: "light",
-                                size: "invisible",
-                            }}
-                        />
-                    </div>
-
-                    {/* Loading subtle - tanpa error UI */}
-                    {isVerifying && !turnstileToken && (
-                        <div className="mb-4 flex items-center justify-center gap-2 text-xs text-brand-dark/40">
-                            <div className="w-3 h-3 border-2 border-brand-pink/30 border-t-brand-pink rounded-full animate-spin"></div>
-                            <span>Verifying your connection...</span>
-                        </div>
-                    )}
+                    {/* Cloudflare Turnstile - Invisible mode, non-blocking */}
+                    <Turnstile
+                        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                        options={{
+                            retry: "never",
+                            refreshExpired: "never",
+                            responseField: false,
+                            theme: "light",
+                            size: "invisible",
+                        }}
+                    />
 
                     {/* 1. Google Login */}
-                    <GoogleLoginButton turnstileToken={turnstileToken} />
+                    <GoogleLoginButton />
 
                     {/* 2. Microsoft Login */}
                     <div className="mt-3">
                         <MicrosoftLoginButton
-                            turnstileToken={turnstileToken}
                             clientId={process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID || ""}
                             redirectUri={process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI || "http://localhost:3000/auth/microsoft/callback"}
                         />
@@ -184,7 +130,7 @@ export default function LoginPage() {
                     </div>
 
                     {/* 4. Email Login */}
-                    <EmailLoginForm turnstileToken={turnstileToken} />
+                    <EmailLoginForm />
 
                     <p className="mt-8 text-center text-xs text-brand-dark/60">
                         By signing in, you agree to our{" "}

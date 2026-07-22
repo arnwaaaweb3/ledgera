@@ -11,7 +11,7 @@ const googleClient = new OAuth2Client(
 
 export async function POST(request: NextRequest) {
   try {
-    const { access_token, turnstile_token } = await request.json();
+    const { access_token } = await request.json();
 
     // 1. Validasi Input Dasar
     if (!access_token) {
@@ -19,47 +19,6 @@ export async function POST(request: NextRequest) {
         { error: 'Access token is required' },
         { status: 400 }
       );
-    }
-
-    if (!turnstile_token) {
-      return NextResponse.json(
-        { error: 'Security token (Turnstile) is missing' },
-        { status: 400 }
-      );
-    }
-
-    // 2. Verifikasi Token Cloudflare Turnstile ke Server Cloudflare
-    // Skip verification if Turnstile encountered errors (graceful degradation - allows human users through)
-    if (turnstile_token !== "error_bypass") {
-      const secretKey = process.env.TURNSTILE_SECRET_KEY || "1x00000000000000000000AA";
-
-      const turnstileResponse = await fetch(
-        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            secret: secretKey,
-            response: turnstile_token,
-          }),
-        }
-      );
-
-      const turnstileOutcome = await turnstileResponse.json();
-
-      if (!turnstileOutcome.success) {
-        console.error('Cloudflare Turnstile verification failed:', turnstileOutcome);
-        return NextResponse.json(
-          { error: 'Security verification failed. Please refresh the page and try again.' },
-          { status: 403 }
-        );
-      }
-
-      console.log('Cloudflare Turnstile verified successfully.');
-    } else {
-      console.warn('⚠️ [TURNSTILE BYPASS] Allowing login without Turnstile verification (Turnstile had errors)');
     }
 
     // Verifikasi access token dengan getTokenInfo

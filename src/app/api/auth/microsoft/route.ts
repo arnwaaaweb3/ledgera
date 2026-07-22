@@ -12,36 +12,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid or empty request body' }, { status: 400 });
     }
 
-    const { code, turnstile_token } = body;
+    const { code } = body;
 
     // 2. Validasi Input Dasar
     if (!code) {
       return NextResponse.json({ error: 'Authorization code is required' }, { status: 400 });
     }
-    if (!turnstile_token) {
-      return NextResponse.json({ error: 'Security token (Turnstile) is missing' }, { status: 400 });
-    }
 
-    // 3. Verifikasi Cloudflare Turnstile (skip if in bypass mode)
-    if (turnstile_token !== "error_bypass") {
-      const secretKey = process.env.TURNSTILE_SECRET_KEY || "1x00000000000000000000AA";
-      const turnstileResponse = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: secretKey, response: turnstile_token }),
-      });
-
-      const turnstileOutcome = await turnstileResponse.json();
-      if (!turnstileOutcome.success) {
-        console.warn('Cloudflare Turnstile verification failed:', turnstileOutcome);
-        return NextResponse.json({ error: 'Security verification failed. Please refresh the page and try again.' }, { status: 403 });
-      }
-      console.log('Cloudflare Turnstile verified successfully.');
-    } else {
-      console.warn('⚠️ [TURNSTILE BYPASS] Allowing login without Turnstile verification (Turnstile had errors)');
-    }
-
-    // 4. Tukar 'code' dengan 'access_token' dari Microsoft
+    // 3. Tukar 'code' dengan 'access_token' dari Microsoft
     const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -61,7 +39,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to exchange code for access token' }, { status: 401 });
     }
 
-    // 5. Ambil Data User dari Microsoft Graph API
+    // 4. Ambil Data User dari Microsoft Graph API
     const userInfoResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
@@ -80,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Microsoft verification successful:', { email, displayName });
 
-    // 6. LOGIKA DATABASE YANG DIPERBAIKI (Merge Identity)
+    // 5. LOGIKA DATABASE YANG DIPERBAIKI (Merge Identity)
     // Cek apakah user dengan email ini sudah ada (misal: dulu daftar pakai Email/Google)
     const existingUser = await prisma.user.findUnique({
       where: { email: email },
@@ -113,7 +91,7 @@ export async function POST(request: NextRequest) {
       console.log('🆕 New user created:', user.id);
     }
 
-    // 7. Buat JWT Token
+    // 6. Buat JWT Token
     const sessionToken = jwt.sign(
       { userId: user.id, email: user.email, displayName: user.displayName },
       process.env.JWT_SECRET!, 

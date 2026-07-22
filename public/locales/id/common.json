@@ -1,0 +1,48 @@
+{
+  "app": {
+    "title": "Ledgera",
+    "tagline": "Platform manajemen transaksi terpercaya"
+  },
+  "nav": {
+    "home": "Beranda",
+    "dashboard": "Dasbor",
+    "login": "Masuk",
+    "logout": "Keluar"
+  },
+  "auth": {
+    "signIn": "Masuk",
+    "signUp": "Daftar",
+    "signInTitle": "Selamat Datang",
+    "signInSubtitle": "Masuk dengan akun yang sudah ada",
+    "signUpTitle": "Buat Akun",
+    "signUpSubtitle": "Daftar untuk memulai",
+    "email": "Alamat Email",
+    "password": "Kata Sandi",
+    "confirmPassword": "Konfirmasi Kata Sandi",
+    "forgotPassword": "Lupa kata sandi?",
+    "noAccount": "Belum punya akun?",
+    "hasAccount": "Sudah punya akun?",
+    "signInWithGoogle": "Masuk dengan Google",
+    "signInWithMicrosoft": "Masuk dengan Microsoft",
+    "signInWithWallet": "Hubungkan Wallet",
+    "orContinueWithEmail": "atau lanjut dengan email",
+    "agreeToTerms": "Dengan masuk, Anda menyetujui",
+    "termsAndConditions": "Syarat dan Ketentuan",
+    "privacyPolicy": "Kebijakan Privasi"
+  },
+  "dashboard": {
+    "title": "Dasbor",
+    "welcome": "Selamat datang! Ini gambaran umum Anda",
+    "comingSoon": "Konten dalam pengembangan..."
+  },
+  "common": {
+    "loading": "Memuat...",
+    "error": "Terjadi kesalahan",
+    "retry": "Coba lagi",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "delete": "Hapus",
+    "edit": "Edit",
+    "submit": "Kirim"
+  }
+}
