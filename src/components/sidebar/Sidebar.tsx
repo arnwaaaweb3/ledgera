@@ -1,17 +1,24 @@
-// src/components/Sidebar.tsx
 "use client";
 
 import * as React from "react";
 import { Home, BarChart, FileText, Users } from "lucide-react";
 
 import SidebarHeader from "@/src/components/sidebar/SidebarHeader";
-import SidebarWallet from "@/src/components/sidebar/SidebarWallet"; 
+import SidebarWallet from "@/src/components/sidebar/SidebarWallet";
+import SidebarWalletBalance from "@/src/components/sidebar/wallets/WalletBalance";
 import SidebarNavItem, { MenuItem } from "@/src/components/sidebar/SidebarNavItem";
 import SidebarUserProfile from "@/src/components/sidebar/SidebarUserProfile";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface UserProfile {
+  id?: string;
+  email?: string;
+  displayName?: string | null;
+  walletAddress?: string | null;
 }
 
 const menuItems: MenuItem[] = [
@@ -36,10 +43,37 @@ const menuItems: MenuItem[] = [
   },
 ];
 
+// Subscriber store untuk membaca localStorage secara reaktif
+const subscribeUserStore = (callback: () => void) => {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+};
+const getUserSnapshot = () => (typeof window === "undefined" ? null : localStorage.getItem("user"));
+const getUserServerSnapshot = () => null;
+
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [renderSidebar, setRenderSidebar] = React.useState(false);
   const [expandedItems, setExpandedItems] = React.useState<string[]>(["Documents"]);
   const [activeItem, setActiveItem] = React.useState<string>("Dashboard");
+  const [isWalletBalanceOpen, setIsWalletBalanceOpen] = React.useState(false);
+
+  // Ambil data user secara reaktif dari localStorage
+  const storedUserRaw = React.useSyncExternalStore(
+    subscribeUserStore,
+    getUserSnapshot,
+    getUserServerSnapshot
+  );
+
+  // Parsing data user & ekstrak wallet address
+  const walletAddress = React.useMemo(() => {
+    if (!storedUserRaw) return null;
+    try {
+      const parsedUser: UserProfile = JSON.parse(storedUserRaw);
+      return parsedUser.walletAddress || null;
+    } catch {
+      return null;
+    }
+  }, [storedUserRaw]);
 
   React.useEffect(() => {
     let frame: number | null = null;
@@ -56,6 +90,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       if (timer !== null) window.clearTimeout(timer);
     };
   }, [isOpen]);
+
+  // Derived State: Popup balance wallet HANYA muncul jika:
+  // 1. Sidebar terbuka (isOpen)
+  // 2. User mengklik wallet (isWalletBalanceOpen)
+  // 3. Wallet address tersedia (connected)
+  const showWalletBalance = isOpen && isWalletBalanceOpen && !!walletAddress;
 
   if (!renderSidebar) return null;
 
@@ -77,7 +117,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <SidebarHeader onClose={onClose} />
 
-        <SidebarWallet />
+        <SidebarWallet 
+          onWalletClick={() => {
+            // Hanya buka popup jika wallet connected
+            if (walletAddress) {
+              setIsWalletBalanceOpen(true);
+            }
+          }}
+        />
 
         {/* Menu Items Container */}
         <div className="px-3 py-2 overflow-y-auto h-[calc(100vh-180px)]">
@@ -101,6 +148,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <SidebarUserProfile />
       </div>
+
+      {showWalletBalance && (
+        <SidebarWalletBalance
+          isOpen={showWalletBalance}
+          onClose={() => setIsWalletBalanceOpen(false)}
+        />
+      )}
     </>
   );
 }

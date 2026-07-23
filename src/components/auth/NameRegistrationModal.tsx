@@ -11,7 +11,7 @@ interface UserProfile {
   id: string;
   email: string;
   displayName?: string | null;
-  walletAddress?: string;
+  walletAddress?: string | null;
 }
 
 const subscribeUserStore = (callback: () => void) => {
@@ -45,13 +45,17 @@ export default function OnboardingModal() {
   }, [storedUserRaw]);
 
   // DERIVED STATE:
-  // Step aktif dihitung langsung tanpa perlu useEffect + setStep!
-  // Jika user sudah punya displayName (cth: dari Google) ATAU step nama baru saja diselesaikan -> Ke WALLET_QUESTION
+  // Step aktif: Jika user belum punya nama -> NAME, jika sudah -> WALLET_QUESTION
   const step: "NAME" | "WALLET_QUESTION" = (user?.displayName || completedNameStep)
     ? "WALLET_QUESTION"
     : "NAME";
 
-  const isOpen = Boolean(user?.id && !isDismissed);
+  // FIX: Modal HANYA terbuka jika user BELUM punya displayName ATAU BELUM punya walletAddress
+  const needsOnboarding = Boolean(
+    user?.id && (!user?.displayName || !user?.walletAddress)
+  );
+  
+  const isOpen = Boolean(needsOnboarding && !isDismissed);
 
   // Submit Step 1: Simpan Nama
   const handleNameSubmit = async (e: React.FormEvent) => {
@@ -70,7 +74,6 @@ export default function OnboardingModal() {
         localStorage.setItem("user", JSON.stringify(updatedUser));
         window.dispatchEvent(new Event("storage"));
         
-        // Cukup tandai step nama selesai -> step otomatis berpindah ke WALLET_QUESTION
         setCompletedNameStep(true);
       } else {
         alert(response.data.message || "Failed to save profile name");
@@ -86,6 +89,13 @@ export default function OnboardingModal() {
   // Option "No": Generate Real Automatic Cryptographic Wallet untuk BNB Chain
   const handleGenerateAutoWallet = async () => {
     if (!user?.id) return;
+
+    // Guard Clause: Jangan overwrite jika user sudah punya wallet
+    if (user.walletAddress) {
+      setIsDismissed(true);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -99,10 +109,9 @@ export default function OnboardingModal() {
       });
 
       if (response.data.success) {
-        // Simpan sesi user terbaru yang sudah punya walletAddress asli
         localStorage.setItem("user", JSON.stringify(response.data.user));
         
-        // (Opsional) Simpan encrypted private key di client/session jika butuh auto-sign
+        // Simpan private key di session (jika butuh auto-sign transaction)
         sessionStorage.setItem("user_pk", newWallet.privateKey);
 
         window.dispatchEvent(new Event("storage"));
@@ -162,7 +171,7 @@ export default function OnboardingModal() {
               <>
                 <div className="space-y-3 text-center">
                   <div className="relative inline-block">
-                    <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-pink/20 to-brand-light-pink/30 flex items-center justify-center">
+                    <div className="w-16 h-16 mx-auto rounded-2xl bg-linear-to-br from-brand-pink/20 to-brand-light-pink/30 flex items-center justify-center">
                       <User className="w-8 h-8 text-brand-pink" strokeWidth={1.5} />
                     </div>
                     <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-brand-pink flex items-center justify-center shadow-lg shadow-brand-pink/30">
