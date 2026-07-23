@@ -5,6 +5,7 @@ import * as React from "react";
 import { Home, BarChart, FileText, Users } from "lucide-react";
 
 import SidebarHeader from "@/src/components/sidebar/SidebarHeader";
+import SidebarWallet from "@/src/components/sidebar/SidebarWallet"; 
 import SidebarNavItem, { MenuItem } from "@/src/components/sidebar/SidebarNavItem";
 import SidebarUserProfile from "@/src/components/sidebar/SidebarUserProfile";
 
@@ -75,6 +76,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         }`}
       >
         <SidebarHeader onClose={onClose} />
+
+        <SidebarWallet />
 
         {/* Menu Items Container */}
         <div className="px-3 py-2 overflow-y-auto h-[calc(100vh-180px)]">

@@ -1,9 +1,11 @@
 // src/components/auth/NameRegistrationModal.tsx
 "use client";
 
-import React, { useState, useSyncExternalStore, useMemo, useEffect } from "react";
+import React, { useState, useSyncExternalStore, useMemo } from "react";
 import axios from "axios";
-import { Sparkles, ArrowRight, User, Loader2 } from "lucide-react";
+import { Sparkles, ArrowRight, User, Loader2, Wallet, ShieldCheck } from "lucide-react";
+import WalletModal from "./wallets/WalletModal";
+import { generateAutoWallet } from "@/src/lib/wallet";
 
 interface UserProfile {
   id: string;
@@ -12,7 +14,6 @@ interface UserProfile {
   walletAddress?: string;
 }
 
-// Subscriber untuk event 'storage'
 const subscribeUserStore = (callback: () => void) => {
   window.addEventListener("storage", callback);
   return () => window.removeEventListener("storage", callback);
@@ -21,38 +22,13 @@ const subscribeUserStore = (callback: () => void) => {
 const getUserSnapshot = () => (typeof window === "undefined" ? null : localStorage.getItem("user"));
 const getUserServerSnapshot = () => null;
 
-// Component Loading Dots
-const LoadingDots = () => {
-  const [dots, setDots] = useState("");
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots((prev) => {
-        if (prev === "") return ".";
-        if (prev === ".") return "..";
-        if (prev === "..") return "...";
-        return "";
-      });
-    }, 400);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span>Saving Name</span>
-      <span className="font-mono w-6 text-left">{dots}</span>
-    </span>
-  );
-};
-
-export default function NameRegistrationModal() {
+export default function OnboardingModal() {
+  const [completedNameStep, setCompletedNameStep] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [focused, setFocused] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
-  // Ambil data user dari localStorage
   const storedUserRaw = useSyncExternalStore(
     subscribeUserStore,
     getUserSnapshot,
@@ -68,10 +44,17 @@ export default function NameRegistrationModal() {
     }
   }, [storedUserRaw]);
 
-  // Modal hanya terbuka jika:
-  const isOpen = Boolean(user?.id && !user?.displayName && !isDismissed);
+  // DERIVED STATE:
+  // Step aktif dihitung langsung tanpa perlu useEffect + setStep!
+  // Jika user sudah punya displayName (cth: dari Google) ATAU step nama baru saja diselesaikan -> Ke WALLET_QUESTION
+  const step: "NAME" | "WALLET_QUESTION" = (user?.displayName || completedNameStep)
+    ? "WALLET_QUESTION"
+    : "NAME";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const isOpen = Boolean(user?.id && !isDismissed);
+
+  // Submit Step 1: Simpan Nama
+  const handleNameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayNameInput.trim() || !user?.id) return;
 
@@ -86,11 +69,9 @@ export default function NameRegistrationModal() {
         const updatedUser = response.data.user;
         localStorage.setItem("user", JSON.stringify(updatedUser));
         window.dispatchEvent(new Event("storage"));
-        setIsDismissed(true);
-
-        if (window.location.pathname !== "/dashboard") {
-          window.location.replace("/dashboard");
-        }
+        
+        // Cukup tandai step nama selesai -> step otomatis berpindah ke WALLET_QUESTION
+        setCompletedNameStep(true);
       } else {
         alert(response.data.message || "Failed to save profile name");
       }
@@ -102,128 +83,184 @@ export default function NameRegistrationModal() {
     }
   };
 
+  // Option "No": Generate Real Automatic Cryptographic Wallet untuk BNB Chain
+  const handleGenerateAutoWallet = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+
+    try {
+      // 1. Generate EVM Wallet Keypair Asli via viem
+      const newWallet = generateAutoWallet();
+
+      // 2. Simpan alamat wallet asli (0x...) ke Database
+      const response = await axios.post("/api/user/wallet", {
+        userId: user.id,
+        walletAddress: newWallet.address,
+      });
+
+      if (response.data.success) {
+        // Simpan sesi user terbaru yang sudah punya walletAddress asli
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        
+        // (Opsional) Simpan encrypted private key di client/session jika butuh auto-sign
+        sessionStorage.setItem("user_pk", newWallet.privateKey);
+
+        window.dispatchEvent(new Event("storage"));
+        setIsDismissed(true);
+
+        if (window.location.pathname !== "/dashboard") {
+          window.location.replace("/dashboard");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to generate real EVM wallet:", error);
+      alert("Failed to setup cryptographic wallet. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Option "Yes": Membuka Modal Wallet External
+  const handleConnectExternalWallet = (address: string) => {
+    if (!user?.id) return;
+
+    axios
+      .post("/api/user/wallet", {
+        userId: user.id,
+        walletAddress: address,
+      })
+      .then((res) => {
+        if (res.data.success) {
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+          window.dispatchEvent(new Event("storage"));
+          setIsWalletModalOpen(false);
+          setIsDismissed(true);
+
+          if (window.location.pathname !== "/dashboard") {
+            window.location.replace("/dashboard");
+          }
+        }
+      })
+      .catch((err) => console.error("Wallet save error", err));
+  };
+
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Backdrop dengan blur & animasi */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Overlay dengan fade-in */}
-        <div 
-          className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity duration-300"
           onClick={() => !loading && setIsDismissed(true)}
         />
 
-        {/* Modal Card */}
         <div className="relative w-full max-w-md animate-in slide-in-from-bottom-10 duration-300">
-          <div className="bg-white rounded-3xl shadow-2xl border border-brand-dark/5 overflow-hidden">
-
-            <div className="p-8 space-y-6">
-              {/* Icon & Header */}
-              <div className="space-y-3 text-center">
-                <div className="relative inline-block">
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-pink/20 to-brand-light-pink/30 flex items-center justify-center">
-                    <User className="w-8 h-8 text-brand-pink" strokeWidth={1.5} />
+          <div className="bg-white rounded-3xl shadow-2xl border border-brand-dark/5 overflow-hidden p-8 space-y-6">
+            
+            {/* STEP 1: INPUT NAMA */}
+            {step === "NAME" && (
+              <>
+                <div className="space-y-3 text-center">
+                  <div className="relative inline-block">
+                    <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-pink/20 to-brand-light-pink/30 flex items-center justify-center">
+                      <User className="w-8 h-8 text-brand-pink" strokeWidth={1.5} />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-brand-pink flex items-center justify-center shadow-lg shadow-brand-pink/30">
+                      <Sparkles className="w-3.5 h-3.5 text-white" />
+                    </div>
                   </div>
-                  <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-brand-pink flex items-center justify-center shadow-lg shadow-brand-pink/30">
-                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                  <div>
+                    <h2 className="text-2xl font-heading font-bold text-brand-dark tracking-tight">
+                      What&apos;s your name?
+                    </h2>
+                    <p className="mt-1.5 text-sm font-body text-brand-dark/50 max-w-xs mx-auto">
+                      Enter your full name or nickname to personalize your experience
+                    </p>
                   </div>
                 </div>
 
-                <div>
-                  <h2 className="text-2xl font-heading font-bold text-brand-dark tracking-tight">
-                    What&apos;s your name?
-                  </h2>
-                  <p className="mt-1.5 text-sm font-body text-brand-dark/50 max-w-xs mx-auto">
-                    Enter your full name or nickname to personalize your experience
-                  </p>
-                </div>
-              </div>
-
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="relative">
+                <form onSubmit={handleNameSubmit} className="space-y-4">
                   <input
                     type="text"
                     value={displayNameInput}
                     onChange={(e) => setDisplayNameInput(e.target.value)}
-                    onFocus={() => setFocused(true)}
-                    onBlur={() => setFocused(false)}
                     placeholder="e.g. John Doe"
                     required
                     autoFocus
                     disabled={loading}
-                    className={`
-                      w-full px-4 py-3.5 bg-surface/50 rounded-xl 
-                      text-sm font-body text-brand-dark placeholder-brand-dark/30
-                      border-2 transition-all duration-200
-                      focus:outline-none focus:ring-4 focus:ring-brand-pink/10
-                      disabled:bg-surface/30 disabled:cursor-not-allowed
-                      ${focused 
-                        ? "border-brand-pink shadow-sm" 
-                        : "border-transparent hover:border-brand-pink/20"
-                      }
-                    `}
+                    className="w-full px-4 py-3.5 bg-surface/50 rounded-xl text-sm font-body text-brand-dark border-2 focus:outline-none focus:border-brand-pink focus:ring-4 focus:ring-brand-pink/10 transition-all duration-200"
                   />
-                  {displayNameInput && !loading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    </div>
-                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading || !displayNameInput.trim()}
+                    className="w-full py-3.5 bg-brand-dark text-white rounded-xl font-heading font-semibold text-sm hover:bg-brand-dark/90 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <span>Continue</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* STEP 2: DO YOU HAVE A WALLET? */}
+            {step === "WALLET_QUESTION" && (
+              <div className="space-y-6 text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-pink/10 flex items-center justify-center text-brand-pink">
+                  <Wallet className="w-8 h-8" />
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || !displayNameInput.trim()}
-                  className={`
-                    w-full py-3.5 rounded-xl font-heading font-semibold text-sm
-                    transition-all duration-200 flex items-center justify-center gap-2.5
-                    cursor-pointer relative overflow-hidden group
-                    ${loading || !displayNameInput.trim()
-                      ? "bg-brand-dark/40 text-white/60 cursor-not-allowed"
-                      : "bg-brand-dark text-white hover:bg-brand-dark/90 hover:shadow-lg hover:shadow-brand-dark/20 active:scale-[0.98]"
-                    }
-                  `}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <LoadingDots />
-                    </>
-                  ) : (
-                    <>
-                      <span>Continue to Dashboard</span>
-                      <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                    </>
-                  )}
-                </button>
-              </form>
+                <div>
+                  <h2 className="text-2xl font-heading font-bold text-brand-dark tracking-tight">
+                    Do you have a wallet?
+                  </h2>
+                  <p className="mt-1.5 text-sm font-body text-brand-dark/50 max-w-xs mx-auto">
+                    Connect your existing Web3 wallet, or let Ledgera automatically secure one for you.
+                  </p>
+                </div>
 
-              {/* Skip hint */}
-              <div className="text-center">
-                <button
-                  onClick={() => setIsDismissed(true)}
-                  disabled={loading}
-                  className="text-xs font-body text-brand-dark/30 hover:text-brand-dark/60 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Skip for now
-                </button>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsWalletModalOpen(true)}
+                    disabled={loading}
+                    className="py-3.5 px-4 bg-brand-dark text-white rounded-xl font-heading font-semibold text-sm hover:bg-brand-dark/90 transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-green-400" />
+                    <span>Yes, I Have</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleGenerateAutoWallet}
+                    disabled={loading}
+                    className="py-3.5 px-4 bg-surface border-2 border-brand-dark/10 text-brand-dark rounded-xl font-heading font-semibold text-sm hover:border-brand-pink hover:bg-brand-pink/5 transition-all duration-200 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-brand-pink" />
+                    ) : (
+                      <span>No, Create One</span>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+
           </div>
         </div>
       </div>
 
-      {/* Inject CSS for gradient animation */}
-      <style jsx>{`
-        @keyframes gradient-x {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .animate-gradient-x {
-          animation: gradient-x 3s ease infinite;
-        }
-      `}</style>
+      <WalletModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+        onConnect={(address) => handleConnectExternalWallet(address)}
+      />
     </>
   );
 }
