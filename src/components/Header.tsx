@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import Sidebar from "@/src/components/Sidebar";
+import Sidebar from "@/src/components/sidebar/Sidebar";
 
 export default function Header() {
     const [isLanguageOpen, setIsLanguageOpen] = useState(false);

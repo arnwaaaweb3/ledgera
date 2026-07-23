@@ -1,11 +1,39 @@
+// src/components/auth/EmailLoginForm.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import { Turnstile } from "@marsidev/react-turnstile";
+
+// Component Loading Dots
+const LoadingDots = () => {
+  const [dots, setDots] = useState("");
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots((prev) => {
+        if (prev === "") return ".";
+        if (prev === ".") return "..";
+        if (prev === "..") return "...";
+        return "";
+      });
+    }, 400);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span>Signing in</span>
+      <span className="font-mono w-6 text-left">{dots}</span>
+    </span>
+  );
+};
 
 export default function EmailLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
   const [showPasswordField, setShowPasswordField] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,10 +54,15 @@ export default function EmailLoginForm() {
     } else {
       setLoading(true);
       try {
-        const response = await axios.post("/api/auth/email", {
-          email,
-          password,
-        }, { timeout: 10000 });
+        const response = await axios.post(
+          "/api/auth/email",
+          {
+            email,
+            password,
+            turnstileToken,
+          },
+          { timeout: 10000 }
+        );
 
         if (response.data.success) {
           const { token, user } = response.data;
@@ -60,6 +93,20 @@ export default function EmailLoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Cloudflare Turnstile - Invisible Mode */}
+      <Turnstile
+        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+        onSuccess={(token) => setTurnstileToken(token)}
+        onExpire={() => setTurnstileToken("")}
+        options={{
+          retry: "never",
+          refreshExpired: "auto",
+          responseField: false,
+          theme: "light",
+          size: "invisible",
+        }}
+      />
+
       <div className="relative">
         <input
           type="email"
@@ -109,16 +156,7 @@ export default function EmailLoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full
-        py-2.5 bg-brand-dark
-        text-white text-sm
-        font-semibold cursor-pointer
-        rounded-lg hover:bg-brand-dark/90
-        focus:outline-none focus:ring-2
-        focus:ring-brand-dark focus:ring-offset-2
-        focus:ring-offset-surface transition duration-200
-        disabled:opacity-70
-        flex items-center justify-center gap-2"
+        className="w-full py-2.5 bg-brand-dark text-white text-sm font-semibold cursor-pointer rounded-lg hover:bg-brand-dark/90 focus:outline-none focus:ring-2 focus:ring-brand-dark focus:ring-offset-2 focus:ring-offset-surface transition duration-200 disabled:opacity-70 flex items-center justify-center gap-2"
       >
         {loading ? (
           <>
@@ -126,7 +164,7 @@ export default function EmailLoginForm() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span>{showPasswordField ? "Signing in..." : "Continue with Email"}</span>
+            <span>{showPasswordField ? <LoadingDots /> : "Continue with Email"}</span>
           </>
         ) : (
           <span>{showPasswordField ? "Sign In" : "Continue with Email"}</span>

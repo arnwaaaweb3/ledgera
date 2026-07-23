@@ -1,13 +1,47 @@
 // src/app/api/auth/email/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/src/lib/prisma"; // Sesuaikan dengan path alias prisma kamu
+import prisma from "@/src/lib/prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
+
+// Helper untuk verifikasi token Cloudflare Turnstile
+async function verifyTurnstileToken(token: string, remoteIp?: string | null): Promise<boolean> {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+
+  // Jika di environment local/dev belum diset secret key-nya, bypass verifikasi dengan warning (opsional)
+  if (!secretKey) {
+    console.warn("⚠️ TURNSTILE_SECRET_KEY is not set in environment. Skipping verification for local dev.");
+    return true;
+  }
+
+  try {
+    const formData = new URLSearchParams();
+    formData.append("secret", secretKey);
+    formData.append("response", token);
+    if (remoteIp) {
+      formData.append("remoteip", remoteIp);
+    }
+
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: formData,
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+      },
+    });
+
+    const outcome = await res.json();
+    return outcome.success === true;
+  } catch (error) {
+    console.error("Cloudflare Turnstile verification error:", error);
+    return false;
+  }
+}
 
 // Helper untuk generate JWT
 const generateToken = async (userId: string) => {
   const secret = new TextEncoder().encode(process.env.JWT_SECRET || "your-super-secret-dev-key");
-  
+
   return await new SignJWT({ userId })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("1h")
@@ -16,7 +50,7 @@ const generateToken = async (userId: string) => {
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, turnstileToken } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -25,10 +59,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Cek apakah user sudah ada
+    // 1. Verifikasi Cloudflare Turnstile Token
+    const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
+    
+    if (turnstileToken) {
+      const isValidCaptcha = await verifyTurnstileToken(turnstileToken, clientIp);
+      if (!isValidCaptcha) {
+        return NextResponse.json(
+          { success: false, message: "Sistem mendeteksi aktivitas mencurigakan (Turnstile failed)." },
+          { status: 400 }
+        );
+      }
+    } else if (process.env.TURNSTILE_SECRET_KEY) {
+      // Jika secret key terpasang di produksi tapi token tidak dikirim dari frontend
+      return NextResponse.json(
+        { success: false, message: "Security token (Turnstile) is missing" },
+        { status: 400 }
+      );
+    }
+
+    // 2. Cek apakah user sudah ada
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
-    // 2. Definisikan tipe untuk user yang AMAN dikirim ke frontend (tanpa password)
+    // Tipe untuk safeUser (tanpa password)
     let safeUser: {
       id: string;
       email: string;
@@ -47,7 +100,7 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         );
       }
-      
+
       const isPasswordValid = await bcrypt.compare(password, existingUser.password);
       if (!isPasswordValid) {
         return NextResponse.json(
@@ -56,7 +109,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Map manual untuk memastikan password TIDAK masuk ke safeUser
       safeUser = {
         id: existingUser.id,
         email: existingUser.email,
@@ -69,23 +121,23 @@ export async function POST(req: NextRequest) {
     } else {
       // 3. Jika user BELUM ada, buat user baru (Auto-Register)
       const hashedPassword = await bcrypt.hash(password, 10);
-      const dummyWalletAddress = `0x${Math.random().toString(16).slice(2, 42).padEnd(40, '0')}`;
+      const dummyWalletAddress = `0x${Math.random().toString(16).slice(2, 42).padEnd(40, "0")}`;
 
       const newUser = await prisma.user.create({
         data: {
           email,
           password: hashedPassword,
-          walletAddress: dummyWalletAddress, 
+          walletAddress: dummyWalletAddress,
         },
         omit: {
-          password: true, 
+          password: true,
         },
       });
 
       safeUser = newUser;
     }
 
-    // 4. Generate Token (TypeScript sekarang 100% tahu safeUser.id ada dan bukan null)
+    // 4. Generate Token
     const token = await generateToken(safeUser.id);
 
     // 5. Return response

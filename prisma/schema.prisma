@@ -1,35 +1,48 @@
 // prisma/schema.prisma
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// 1. FIXED: Provider diubah ke format yang benar
 generator client {
   provider = "prisma-client-js"
 }
 
-// 2. MODEL USER: Diselaraskan dengan Supabase Auth + zkLogin Identity
+// Enum untuk Status Transaksi agar Typesafe
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+// Enum untuk Kategori Transaksi
+enum TransactionCategory {
+  PERSONAL
+  PROCUREMENT
+  BUSINESS
+}
+
+// 1. MODEL USER: Diselaraskan dengan Email Auth, Google OAuth, & zkLogin/Microsoft
 model User {
-  id            String   @id @default(cuid()) 
-  email         String   @unique
-  password      String?  
+  id            String    @id @default(cuid()) 
+  email         String    @unique
+  password      String?   
   displayName   String?
-  walletAddress String   @unique 
-  googleSub     String?  @unique 
-  microsoftSub  String?  @unique
+  walletAddress String    @unique 
+  googleSub     String?   @unique 
+  microsoftSub  String?   @unique
   
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   projects      Project[]
   sentTx        Transaction[] @relation("SenderRelation")
   receivedTx    Transaction[] @relation("RecipientRelation")
 }
 
-// 3. MODEL PROJECT: Pengelompokan transaksi P2P (Project-centric Grouping)
+// 2. MODEL PROJECT: Pengelompokan transaksi P2P (Project-centric Grouping)
 model Project {
   id           String        @id @default(uuid())
   name         String
@@ -37,33 +50,38 @@ model Project {
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   
   transactions Transaction[]
+
+  @@index([userId])
 }
 
-// 4. MODEL TRANSACTION: Mengelola metadata, kategori P2P, dan link ke blockchain + Arweave
+// 3. MODEL TRANSACTION: Metadata, kategori P2P, link Smart Contract BNB + Arweave/Irys
 model Transaction {
-  id              String   @id @default(uuid())
+  id              String              @id @default(uuid())
   projectId       String
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
   
   title           String
-  amount          Decimal  // Aman untuk desimal uang finansial (IDRX)
-  descriptionHash String   // IPFS / Off-chain metadata hash
-  arweaveTxId     String?  // Tambahan: Menyimpan permanent audit log ID dari Arweave/Irys
+  amount          Decimal             // Presisi desimal tinggi untuk nominal Rupiah / Stablecoin
+  descriptionHash String?             // Optional: IPFS / Off-chain metadata hash
+  evidenceUrl     String?             // Tambahan: Bukti pembayaran / foto milestone escrow
+  arweaveTxId     String?             // Permanent audit log ID dari Arweave/Irys
   
-  // Kategori: 0 = Personal, 1 = Procurement, 2 = Business
-  category        Int      @default(0) 
-  
-  // Status: PENDING, CONFIRMED, REJECTED, CANCELLED
-  status          String   @default("PENDING")
+  category        TransactionCategory @default(PERSONAL)
+  status          TransactionStatus   @default(PENDING)
   
   senderId        String
-  sender          User     @relation("SenderRelation", fields: [senderId], references: [id])
+  sender          User                @relation("SenderRelation", fields: [senderId], references: [id])
   
   recipientId     String
-  recipient       User     @relation("RecipientRelation", fields: [recipientId], references: [id])
+  recipient       User                @relation("RecipientRelation", fields: [recipientId], references: [id])
   
-  txHash          String?  // Menyimpan BNB Chain transaction hash untuk Judge Mode overlay
-  createdAt       DateTime @default(now())
+  txHash          String?             // BNB Chain transaction hash untuk Judge Mode
+  createdAt       DateTime            @default(now())
+
+  @@index([projectId])
+  @@index([senderId])
+  @@index([recipientId])
 }
