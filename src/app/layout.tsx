@@ -2,7 +2,6 @@
 import type { Metadata } from "next";
 import { Ledger, Stack_Sans_Text, Geist } from "next/font/google";
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import NameRegistrationModal from "@/src/components/auth/NameRegistrationModal";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -42,8 +41,6 @@ export default function RootLayout({
           clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}
         >
           {children}
-          {/* Modal registrasi nama otomatis (1x muncul saat displayName null) */}
-          <NameRegistrationModal />
         </GoogleOAuthProvider>
       </body>
     </html>

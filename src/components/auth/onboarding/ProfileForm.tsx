@@ -72,7 +72,11 @@ export default function ProfileForm({
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ""))}
+              onChange={(e) =>
+                setUsername(
+                  e.target.value.toLowerCase().replace(/^@/, "").replace(/\s+/g, "")
+                )
+              }
               placeholder="johndoeofficial"
               required
               disabled={loading}

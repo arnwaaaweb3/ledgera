@@ -1,11 +1,10 @@
-// src/components/sidebar/profile/ProfileModal.tsx
 "use client";
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import Image from "next/image";
 import axios from "axios";
-import { X, Camera, Check, Loader2 } from "lucide-react";
+import { X, Camera, Check, Loader2, AtSign } from "lucide-react";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -14,6 +13,7 @@ interface ProfileModalProps {
     id?: string;
     email?: string;
     displayName?: string | null;
+    username?: string | null;
     walletAddress?: string;
     avatarSeed?: string;
   } | null;
@@ -33,17 +33,42 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
     () => false
   );
 
+  // Ambil data user paling fresh dari LocalStorage jika ada (reaktif terhadap LocalStorage)
+  const [currentUser, setCurrentUser] = React.useState(user);
+
+  React.useEffect(() => {
+    const readStorage = () => {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try {
+          setCurrentUser(JSON.parse(stored));
+        } catch {
+          setCurrentUser(user);
+        }
+      } else {
+        setCurrentUser(user);
+      }
+    };
+
+    readStorage();
+
+    window.addEventListener("storage", readStorage);
+    return () => window.removeEventListener("storage", readStorage);
+  }, [user, isOpen]);
+
   const [selectedAvatar, setSelectedAvatar] = React.useState<string>(
-    user?.avatarSeed || "Felix"
+    currentUser?.avatarSeed || user?.avatarSeed || "Felix"
   );
   const [saving, setSaving] = React.useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = React.useState(false);
 
-  // Sync prop avatarSeed jika props user berubah
-  const [prevAvatarSeed, setPrevAvatarSeed] = React.useState<string | undefined>(user?.avatarSeed);
-  if (user?.avatarSeed !== prevAvatarSeed) {
-    setPrevAvatarSeed(user?.avatarSeed);
-    setSelectedAvatar(user?.avatarSeed || "Felix");
+  // Sync prop avatarSeed jika props/state berubah
+  const activeAvatarSeed = currentUser?.avatarSeed || user?.avatarSeed;
+  const [prevAvatarSeed, setPrevAvatarSeed] = React.useState<string | undefined>(activeAvatarSeed);
+  
+  if (activeAvatarSeed !== prevAvatarSeed) {
+    setPrevAvatarSeed(activeAvatarSeed);
+    setSelectedAvatar(activeAvatarSeed || "Felix");
   }
 
   const handleCloseModal = React.useCallback(() => {
@@ -82,32 +107,34 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
     };
   }, [isOpen]);
 
-  // 🔥 PILIH & SIMPAN AVATAR LANGSUNG KE DATABASE + LOCALSTORAGE
+  // PILIH & SIMPAN AVATAR LANGSUNG KE DATABASE + LOCALSTORAGE
   const handleAvatarSelect = async (seed: string) => {
     setSelectedAvatar(seed);
     onAvatarChange?.(seed);
 
     const storedUserRaw = localStorage.getItem("user");
-    let currentUser = storedUserRaw ? JSON.parse(storedUserRaw) : user;
+    let activeUserData = storedUserRaw ? JSON.parse(storedUserRaw) : currentUser || user;
 
-    // 1. Update ke LocalStorage terlebih dahulu (responsif instan)
-    if (currentUser) {
-      currentUser = { ...currentUser, avatarSeed: seed };
-      localStorage.setItem("user", JSON.stringify(currentUser));
+    if (activeUserData) {
+      activeUserData = { ...activeUserData, avatarSeed: seed };
+      localStorage.setItem("user", JSON.stringify(activeUserData));
+      setCurrentUser(activeUserData);
       window.dispatchEvent(new Event("storage"));
     }
 
-    // 2. Kirim dan simpan secara permanen di Database via API
-    if (user?.id) {
+    const userIdToUse = activeUserData?.id || user?.id;
+
+    if (userIdToUse) {
       setSaving(true);
       try {
         const response = await axios.post("/api/user/profile", {
-          userId: user.id,
+          userId: userIdToUse,
           avatarSeed: seed,
         });
 
         if (response.data.success) {
           localStorage.setItem("user", JSON.stringify(response.data.user));
+          setCurrentUser(response.data.user);
           window.dispatchEvent(new Event("storage"));
         }
       } catch (error) {
@@ -123,7 +150,21 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
 
   if (!isOpen || !mounted) return null;
 
-  const displayName = user?.displayName || (user?.email ? user.email.split("@")[0] : "User");
+  // Hirarki penentuan Display Name & Username yang konsisten
+  const activeUser = currentUser || user;
+  const displayName =
+    activeUser?.displayName || (activeUser?.email ? activeUser.email.split("@")[0] : "User");
+
+  // Penentuan username: prioritas ke `username`, lalu `displayName` yang dibersihkan, baru ke `email`
+  const rawUsername =
+    activeUser?.username ||
+    (activeUser?.displayName
+      ? activeUser.displayName.toLowerCase().replace(/\s+/g, "")
+      : activeUser?.email
+      ? activeUser.email.split("@")[0]
+      : "user");
+
+  const formattedUsername = rawUsername.replace(/^@/, "");
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -180,12 +221,19 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
               </button>
             </div>
 
-            <div className="overflow-hidden pl-1">
-              <h4 className="font-heading font-semibold text-base text-brand-dark truncate">
+            <div className="overflow-hidden pl-1 space-y-1">
+              <h4 className="font-heading font-semibold text-base text-brand-dark truncate leading-tight">
                 {displayName}
               </h4>
+
+              {/* TAMPILKAN USERNAME TAG DENGAN ICON AtSign */}
+              <div className="inline-flex items-center gap-1 text-xs font-body font-medium text-brand-pink bg-brand-pink/10 px-2 py-0.5 rounded-md">
+                <AtSign className="w-3 h-3 shrink-0" />
+                <span className="truncate">{formattedUsername}</span>
+              </div>
+
               <p className="text-xs font-body text-brand-dark/50 truncate">
-                {user?.email || "No Email"}
+                {activeUser?.email || "No Email"}
               </p>
             </div>
           </div>
@@ -237,7 +285,7 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
                     </button>
                   ))}
                 </div>
-                
+
                 <div className="absolute bottom-0 left-0 right-0 h-6 bg-linear-to-t from-surface/50 to-transparent pointer-events-none" />
               </div>
             </div>

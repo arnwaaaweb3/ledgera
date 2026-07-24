@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useSyncExternalStore, useMemo } from "react";
+import { usePathname } from "next/navigation";
 import axios, { AxiosError } from "axios";
 import WalletModal from "./wallets/WalletModal";
 import ProfileForm from "./onboarding/ProfileForm";
@@ -29,6 +30,7 @@ const getUserSnapshot = () => (typeof window === "undefined" ? null : localStora
 const getUserServerSnapshot = () => null;
 
 export default function OnboardingModal() {
+  const pathname = usePathname();
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,17 +52,20 @@ export default function OnboardingModal() {
     }
   }, [storedUserRaw]);
 
-  const needsDisplayName = Boolean(user && !user.displayName);
+  // Syarat Onboarding Modal
+  const needsDisplayName = Boolean(user && (!user.displayName || !user.username));
   const needsWallet = Boolean(user && !user.walletAddress);
 
-  const isOpen = Boolean((needsDisplayName || needsWallet) && !isDismissed);
+  // 🚨 GUARD PATH: Jangan pernah buka modal jika berada di halaman login atau homepage publik
+  const isPublicPage = pathname === "/login" || pathname === "/";
+  const isOpen = Boolean((needsDisplayName || needsWallet) && !isDismissed && !isPublicPage);
 
   // Submit profile name & username
   const handleNameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayNameInput.trim() || !usernameInput.trim()) return;
 
-    const formattedUsername = usernameInput.trim().replace(/^@/, "").toLowerCase();
+    const formattedUsername = usernameInput.trim().replace(/^@/, "").replace(/\s+/g, "").toLowerCase();
 
     setLoading(true);
     try {

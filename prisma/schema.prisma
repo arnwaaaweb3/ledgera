@@ -26,23 +26,28 @@ enum TransactionCategory {
 
 // 1. MODEL USER
 model User {
-  id            String    @id @default(cuid()) 
-  email         String    @unique
-  username      String?   @unique
-  password      String?   
-  displayName   String?
-  avatarSeed    String?
-  isEmailVerified Boolean @default(false)
-  walletAddress String    @unique 
-  googleSub     String?   @unique 
-  microsoftSub  String?   @unique
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String          @id @default(cuid()) 
+  email           String          @unique
+  username        String?         @unique
+  password        String?   
+  displayName     String?
+  avatarSeed      String?
 
-  projects      Project[]
-  sentTx        Transaction[] @relation("SenderRelation")
-  receivedTx    Transaction[] @relation("RecipientRelation")
+  // Status Verifikasi & OAuth Provider
+  isEmailVerified Boolean         @default(false)
+  isVerified      Boolean         @default(false) // Untuk centang hijau/biru serbaguna
+  authProvider    String          @default("EMAIL") // "GOOGLE", "MICROSOFT", "EMAIL", "WALLET"
+
+  walletAddress   String          @unique 
+  googleSub       String?         @unique 
+  microsoftSub    String?         @unique
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  projects        Project[]
+  sentTx          Transaction[]   @relation("SenderRelation")
+  receivedTx      Transaction[]   @relation("RecipientRelation")
 }
 
 // 2. MODEL PROJECT: Pengelompokan transaksi P2P (Project-centric Grouping)

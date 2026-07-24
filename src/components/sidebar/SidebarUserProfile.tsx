@@ -1,3 +1,4 @@
+// src/components/sidebar/SidebarUserProfile.tsx
 "use client";
 
 import * as React from "react";
@@ -5,6 +6,7 @@ import Image from "next/image";
 import { LogOut } from "lucide-react";
 import ProfileModal from "@/src/components/sidebar/profile/ProfileModal";
 import LogoutConfirmModal from "@/src/components/sidebar/LogoutConfirmModal";
+import VerificationBadge from "@/src/components/ui/VerificationBadge";
 
 interface UserProfile {
   id?: string;
@@ -12,6 +14,8 @@ interface UserProfile {
   displayName?: string | null;
   walletAddress?: string;
   avatarSeed?: string;
+  isVerified?: boolean;
+  authProvider?: string | null;
 }
 
 const subscribeUserStore = (callback: () => void) => {
@@ -90,9 +94,17 @@ export default function SidebarUserProfile() {
             </div>
 
             <div className="truncate">
-              <p className="text-sm font-heading font-semibold text-brand-dark truncate">
-                {displayName}
-              </p>
+              {/* 🛡️ DISPLAY NAME + SHIELD BADGE */}
+              <div className="flex items-center gap-1.5 truncate">
+                <p className="text-sm font-heading font-semibold text-brand-dark truncate">
+                  {displayName}
+                </p>
+                <VerificationBadge 
+                  isVerified={user?.isVerified} 
+                  authProvider={user?.authProvider} 
+                />
+              </div>
+
               <p className="text-xs font-body text-brand-dark/50 truncate">
                 {user?.email || "Guest"}
               </p>
