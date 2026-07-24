@@ -97,10 +97,10 @@ export default function SidebarWallet({ onWalletClick }: SidebarWalletProps) {
               <div className="truncate">
                 <div className="flex items-center gap-1.5">
                   <p
-                    className={`text-sm font-heading font-semibold truncate ${
+                    className={`text-sm font-semibold truncate ${
                       walletAddress
-                        ? "font-mono text-brand-dark group-hover:text-brand-pink transition-colors"
-                        : "text-brand-dark"
+                        ? "font-body text-brand-dark group-hover:text-brand-pink transition-colors"
+                        : "text-brand-dark font-heading"
                     }`}
                   >
                     {truncatedAddress || "No Wallet connected"}

@@ -213,7 +213,7 @@ export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
                 {loading ? (
                   <div className="w-16 h-4 bg-brand-dark/10 rounded-md animate-pulse" />
                 ) : (
-                  <span className="font-mono font-bold text-sm text-brand-dark">
+                  <span className="font-body font-bold text-sm text-brand-dark">
                     {bnbBalance} <span className="text-xs font-normal text-brand-dark/60">BNB</span>
                   </span>
                 )}
@@ -243,7 +243,7 @@ export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
                 {loading ? (
                   <div className="w-16 h-4 bg-brand-dark/10 rounded-md animate-pulse" />
                 ) : (
-                  <span className="font-mono font-bold text-sm text-brand-dark">
+                  <span className="font-body font-bold text-sm text-brand-dark">
                     {ethBalance} <span className="text-xs font-normal text-brand-dark/60">ETH</span>
                   </span>
                 )}

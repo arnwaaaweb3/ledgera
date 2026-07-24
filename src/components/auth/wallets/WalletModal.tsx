@@ -11,7 +11,7 @@ import WalletConnectWallet from "./WalletConnectWallet";
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnect: (address: string, type: string) => void;
+  onConnect: (address: string, type?: string) => void;
 }
 
 export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalProps) {

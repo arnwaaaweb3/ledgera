@@ -1,6 +1,7 @@
 // src/app/api/user/wallet/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/src/lib/prisma";
+import { isAddress } from "viem";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,6 +10,14 @@ export async function POST(req: NextRequest) {
     if (!userId || !walletAddress) {
       return NextResponse.json(
         { success: false, message: "User ID and Wallet Address are required" },
+        { status: 400 }
+      );
+    }
+
+    // ✅ FIX FUNC-3: Validasi format alamat EVM/BNB Chain asli
+    if (!isAddress(walletAddress)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid EVM wallet address format" },
         { status: 400 }
       );
     }

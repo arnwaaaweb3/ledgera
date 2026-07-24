@@ -1,3 +1,4 @@
+// src/components/auth/ConnectWalletButton.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -30,12 +31,8 @@ export default function ConnectWalletButton({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dots, setDots] = useState("");
 
-  // Animasi titik-titik untuk loading
   useEffect(() => {
-    // Kalo ga loading, stop interval dan jangan setState
-    if (!isLoading) {
-      return;
-    }
+    if (!isLoading) return;
 
     const interval = setInterval(() => {
       setDots((prev) => {
@@ -51,22 +48,35 @@ export default function ConnectWalletButton({
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const handleConnect = (walletAddress: string, type: string) => {
+  const handleConnect = (walletAddress: string, type?: string) => {
+    const selectedType = type || "custom";
     setAddress(walletAddress);
-    setWalletType(type);
+    setWalletType(selectedType);
     localStorage.setItem("wallet_address", walletAddress);
-    localStorage.setItem("wallet_type", type);
+    localStorage.setItem("wallet_type", selectedType);
+
+    // 🔥 DIBIKIN SINKRON: Buat/update snapshot user lokal jika belum punya nama
+    const storedUserRaw = localStorage.getItem("user");
+    let currentUser = storedUserRaw ? JSON.parse(storedUserRaw) : null;
+
+    currentUser = {
+      ...currentUser,
+      id: currentUser?.id || `user_${Date.now()}`,
+      walletAddress: walletAddress,
+    };
+
+    localStorage.setItem("user", JSON.stringify(currentUser));
+    window.dispatchEvent(new Event("storage"));
+
     onConnect?.(walletAddress);
     setIsModalOpen(false);
   };
 
   const handleButtonClick = async () => {
     if (address) {
-      // Disconnect dengan loading
       setIsLoading(true);
-      setDots(""); // Reset dots di awal loading
+      setDots("");
       try {
-        // Simulasi delay disconnect (opsional)
         await new Promise(resolve => setTimeout(resolve, 500));
         
         localStorage.removeItem("wallet_address");
@@ -78,16 +88,14 @@ export default function ConnectWalletButton({
         console.error("Disconnect error:", error);
       } finally {
         setIsLoading(false);
-        setDots(""); // Reset dots selesai
+        setDots("");
       }
       return;
     }
     
-    // Buka modal untuk connect
     setIsModalOpen(true);
   };
 
-  // Tampilkan icon wallet di tombol utama
   const getWalletIcon = () => {
     if (walletType === "binance") {
       return (
@@ -140,7 +148,6 @@ export default function ConnectWalletButton({
 
   return (
     <div className="w-full">
-      {/* Button Utama */}
       <button
         onClick={handleButtonClick}
         disabled={isLoading}
@@ -155,7 +162,6 @@ export default function ConnectWalletButton({
                    }`}
       >
         {isLoading ? (
-          // State Loading dengan animasi titik-titik
           <>
             <svg 
               className="animate-spin h-5 w-5 text-current" 
@@ -180,13 +186,11 @@ export default function ConnectWalletButton({
             <span>{address ? "Disconnecting" : "Connecting"}{dots}</span>
           </>
         ) : address ? (
-          // State Connected
           <>
             {getWalletIcon()}
             <span>{truncateAddress(address)}</span>
           </>
         ) : (
-          // State Not Connected
           <>
             <svg 
               className="w-5 h-5" 
@@ -206,7 +210,6 @@ export default function ConnectWalletButton({
         )}
       </button>
 
-      {/* Modal */}
       <WalletModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

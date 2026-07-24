@@ -9,7 +9,7 @@ import { generateAutoWallet } from "@/src/lib/wallet";
 
 interface UserProfile {
   id: string;
-  email: string;
+  email?: string;
   displayName?: string | null;
   walletAddress?: string | null;
 }
@@ -23,7 +23,6 @@ const getUserSnapshot = () => (typeof window === "undefined" ? null : localStora
 const getUserServerSnapshot = () => null;
 
 export default function OnboardingModal() {
-  const [completedNameStep, setCompletedNameStep] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -44,65 +43,73 @@ export default function OnboardingModal() {
     }
   }, [storedUserRaw]);
 
-  // DERIVED STATE:
-  // Step aktif: Jika user belum punya nama -> NAME, jika sudah -> WALLET_QUESTION
-  const step: "NAME" | "WALLET_QUESTION" = (user?.displayName || completedNameStep)
-    ? "WALLET_QUESTION"
-    : "NAME";
+  // Modal terbuka jika user login TETAPI belum punya displayName ATAU belum punya walletAddress
+  const needsDisplayName = Boolean(user && !user.displayName);
+  const needsWallet = Boolean(user && !user.walletAddress);
 
-  // FIX: Modal HANYA terbuka jika user BELUM punya displayName ATAU BELUM punya walletAddress
-  const needsOnboarding = Boolean(
-    user?.id && (!user?.displayName || !user?.walletAddress)
-  );
-  
-  const isOpen = Boolean(needsOnboarding && !isDismissed);
+  const isOpen = Boolean((needsDisplayName || needsWallet) && !isDismissed);
 
-  // Submit Step 1: Simpan Nama
+  // Submit Simpan Nama
   const handleNameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!displayNameInput.trim() || !user?.id) return;
+    if (!displayNameInput.trim()) return;
 
     setLoading(true);
     try {
+      // Jika user belum ada di DB (misal login wallet murni), buat snapshot user lokal
+      const userId = user?.id || `user_${Date.now()}`;
+      const currentWallet = user?.walletAddress || localStorage.getItem("wallet_address");
+
       const response = await axios.post("/api/user/profile", {
-        userId: user.id,
+        userId: userId,
         displayName: displayNameInput.trim(),
+        walletAddress: currentWallet,
       });
 
       if (response.data.success) {
         const updatedUser = response.data.user;
         localStorage.setItem("user", JSON.stringify(updatedUser));
-        window.dispatchEvent(new Event("storage"));
-        
-        setCompletedNameStep(true);
       } else {
-        alert(response.data.message || "Failed to save profile name");
+        // Fallback simpan ke local storage jika API bermasalah/offline mode
+        const updatedUser = {
+          ...user,
+          id: userId,
+          displayName: displayNameInput.trim(),
+          walletAddress: currentWallet,
+        };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
       }
+
+      window.dispatchEvent(new Event("storage"));
+      setIsDismissed(true);
     } catch (error) {
       console.error("Error updating profile name:", error);
-      alert("Something went wrong while saving your name.");
+      // Fallback
+      const updatedUser = {
+        ...user,
+        id: user?.id || `user_${Date.now()}`,
+        displayName: displayNameInput.trim(),
+        walletAddress: user?.walletAddress || localStorage.getItem("wallet_address"),
+      };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      window.dispatchEvent(new Event("storage"));
+      setIsDismissed(true);
     } finally {
       setLoading(false);
     }
   };
 
-  // Option "No": Generate Real Automatic Cryptographic Wallet untuk BNB Chain
+  // Option "No": Generate Auto Wallet (Untuk login OAuth/Email)
   const handleGenerateAutoWallet = async () => {
     if (!user?.id) return;
-
-    // Guard Clause: Jangan overwrite jika user sudah punya wallet
     if (user.walletAddress) {
       setIsDismissed(true);
       return;
     }
 
     setLoading(true);
-
     try {
-      // 1. Generate EVM Wallet Keypair Asli via viem
       const newWallet = generateAutoWallet();
-
-      // 2. Simpan alamat wallet asli (0x...) ke Database
       const response = await axios.post("/api/user/wallet", {
         userId: user.id,
         walletAddress: newWallet.address,
@@ -110,10 +117,6 @@ export default function OnboardingModal() {
 
       if (response.data.success) {
         localStorage.setItem("user", JSON.stringify(response.data.user));
-        
-        // Simpan private key di session (jika butuh auto-sign transaction)
-        sessionStorage.setItem("user_pk", newWallet.privateKey);
-
         window.dispatchEvent(new Event("storage"));
         setIsDismissed(true);
 
@@ -122,14 +125,14 @@ export default function OnboardingModal() {
         }
       }
     } catch (error) {
-      console.error("Failed to generate real EVM wallet:", error);
-      alert("Failed to setup cryptographic wallet. Please try again.");
+      console.error("Failed to generate wallet:", error);
+      alert("Failed to setup wallet. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Option "Yes": Membuka Modal Wallet External
+  // Option "Yes": Buka modal wallet eksternal
   const handleConnectExternalWallet = (address: string) => {
     if (!user?.id) return;
 
@@ -158,16 +161,13 @@ export default function OnboardingModal() {
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity duration-300"
-          onClick={() => !loading && setIsDismissed(true)}
-        />
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity duration-300" />
 
         <div className="relative w-full max-w-md animate-in slide-in-from-bottom-10 duration-300">
           <div className="bg-white rounded-3xl shadow-2xl border border-brand-dark/5 overflow-hidden p-8 space-y-6">
             
-            {/* STEP 1: INPUT NAMA */}
-            {step === "NAME" && (
+            {/* JIKA USER BELUM PUNYA NAMA -> TAMPILKAN INPUT NAMA SAJA */}
+            {needsDisplayName ? (
               <>
                 <div className="space-y-3 text-center">
                   <div className="relative inline-block">
@@ -216,10 +216,8 @@ export default function OnboardingModal() {
                   </button>
                 </form>
               </>
-            )}
-
-            {/* STEP 2: DO YOU HAVE A WALLET? */}
-            {step === "WALLET_QUESTION" && (
+            ) : needsWallet ? (
+              /* JIKA USER SUDAH PUNYA NAMA TAPI BELUM PUNYA WALLET (Alur OAuth/Email) */
               <div className="space-y-6 text-center">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-pink/10 flex items-center justify-center text-brand-pink">
                   <Wallet className="w-8 h-8" />
@@ -259,7 +257,7 @@ export default function OnboardingModal() {
                   </button>
                 </div>
               </div>
-            )}
+            ) : null}
 
           </div>
         </div>

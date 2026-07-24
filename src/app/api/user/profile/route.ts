@@ -13,10 +13,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const cleanName = displayName.trim();
+
+    // ✅ FIX BP-6: Batasi panjang nama maksimal 50 karakter
+    if (cleanName.length > 50) {
+      return NextResponse.json(
+        { success: false, message: "Display name cannot exceed 50 characters" },
+        { status: 400 }
+      );
+    }
+
     // Update displayName di database
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { displayName: displayName.trim() },
+      data: { displayName: cleanName },
       select: {
         id: true,
         email: true,

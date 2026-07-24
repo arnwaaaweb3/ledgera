@@ -3,12 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/src/lib/prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
+import { generateAutoWallet } from "@/src/lib/wallet";
 
 // Helper untuk verifikasi token Cloudflare Turnstile
 async function verifyTurnstileToken(token: string, remoteIp?: string | null): Promise<boolean> {
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
 
-  // Jika di environment local/dev belum diset secret key-nya, bypass verifikasi dengan warning (opsional)
   if (!secretKey) {
     console.warn("⚠️ TURNSTILE_SECRET_KEY is not set in environment. Skipping verification for local dev.");
     return true;
@@ -38,9 +38,14 @@ async function verifyTurnstileToken(token: string, remoteIp?: string | null): Pr
   }
 }
 
-// Helper untuk generate JWT
+// Helper untuk generate JWT aman
 const generateToken = async (userId: string) => {
-  const secret = new TextEncoder().encode(process.env.JWT_SECRET || "your-super-secret-dev-key");
+  const secretKey = process.env.JWT_SECRET;
+  if (!secretKey) {
+    throw new Error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is not set!");
+  }
+  
+  const secret = new TextEncoder().encode(secretKey);
 
   return await new SignJWT({ userId })
     .setProtectedHeader({ alg: "HS256" })
@@ -71,7 +76,6 @@ export async function POST(req: NextRequest) {
         );
       }
     } else if (process.env.TURNSTILE_SECRET_KEY) {
-      // Jika secret key terpasang di produksi tapi token tidak dikirim dari frontend
       return NextResponse.json(
         { success: false, message: "Security token (Turnstile) is missing" },
         { status: 400 }
@@ -81,7 +85,6 @@ export async function POST(req: NextRequest) {
     // 2. Cek apakah user sudah ada
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
-    // Tipe untuk safeUser (tanpa password)
     let safeUser: {
       id: string;
       email: string;
@@ -93,10 +96,9 @@ export async function POST(req: NextRequest) {
     };
 
     if (existingUser) {
-      // Jika user ada, verifikasi password
       if (!existingUser.password) {
         return NextResponse.json(
-          { success: false, message: "Akun ini terdaftar via Google. Silakan login dengan Google." },
+          { success: false, message: "Akun ini terdaftar via Google/Microsoft. Silakan login dengan opsi tersebut." },
           { status: 401 }
         );
       }
@@ -119,15 +121,15 @@ export async function POST(req: NextRequest) {
         updatedAt: existingUser.updatedAt,
       };
     } else {
-      // 3. Jika user BELUM ada, buat user baru (Auto-Register)
+      // 3. Jika user BELUM ada, buat wallet BNB Chain asli & catat user
       const hashedPassword = await bcrypt.hash(password, 10);
-      const dummyWalletAddress = `0x${Math.random().toString(16).slice(2, 42).padEnd(40, "0")}`;
+      const autoWallet = generateAutoWallet();
 
       const newUser = await prisma.user.create({
         data: {
           email,
           password: hashedPassword,
-          walletAddress: dummyWalletAddress,
+          walletAddress: autoWallet.address,
         },
         omit: {
           password: true,

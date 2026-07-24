@@ -1,9 +1,9 @@
 // src/proxy.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const token = request.cookies.get('auth_token')?.value;
 
     // Protected routes - hanya /dashboard
@@ -15,14 +15,15 @@ export function proxy(request: NextRequest) {
         }
 
         try {
-            jwt.verify(token, process.env.JWT_SECRET!);
+            const secret = new TextEncoder().encode(process.env.JWT_SECRET || '');
+            await jwtVerify(token, secret);
             return NextResponse.next();
         } catch {
             return NextResponse.redirect(new URL('/login', request.url));
         }
     }
 
-    // Public routes: /, /login, dll - biarkan pass through
+    // Public routes: biarkan pass through
     return NextResponse.next();
 }
 

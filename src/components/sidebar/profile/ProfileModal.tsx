@@ -25,12 +25,45 @@ const AVATAR_SEEDS = [
 ];
 
 export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: ProfileModalProps) {
-  // Mencegah error Hydration di Next.js saat Portal
   const mounted = React.useSyncExternalStore(
-    () => () => {},
+    () => () => { },
     () => true,
     () => false
   );
+
+  const [selectedAvatar, setSelectedAvatar] = React.useState<string>(
+    user?.avatarSeed || "Felix"
+  );
+  
+  // Track prop sebelumnya untuk sinkronisasi
+  const [prevAvatarSeed, setPrevAvatarSeed] = React.useState<string | undefined>(user?.avatarSeed);
+
+  if (user?.avatarSeed !== prevAvatarSeed) {
+    setPrevAvatarSeed(user?.avatarSeed);
+    setSelectedAvatar(user?.avatarSeed || "Felix");
+  }
+
+  const [showAvatarPicker, setShowAvatarPicker] = React.useState(false);
+
+  // 💥 FUNGSI CLOSE MODAL DENGAN SIMPAN AVATAR (PINDAH KE ATAS)
+  const handleCloseModal = React.useCallback(() => {
+    // Simpan avatar terakhir yang dipilih ke localStorage
+    if (selectedAvatar) {
+      const storedUserRaw = localStorage.getItem("user");
+      if (storedUserRaw) {
+        try {
+          const currentUser = JSON.parse(storedUserRaw);
+          const updatedUser = { ...currentUser, avatarSeed: selectedAvatar };
+          
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+          window.dispatchEvent(new Event("storage"));
+        } catch (error) {
+          console.error("Gagal memperbarui avatar di localStorage:", error);
+        }
+      }
+    }
+    onClose();
+  }, [selectedAvatar, onClose]);
 
   // Handle ESC key
   React.useEffect(() => {
@@ -38,13 +71,13 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
 
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        handleCloseModal();
       }
     };
 
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleCloseModal]);
 
   // Handle Click Outside
   React.useEffect(() => {
@@ -53,38 +86,41 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest(".profile-modal-card")) {
-        onClose();
+        handleCloseModal();
       }
     };
 
-    const timer = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-    }, 100);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, handleCloseModal]);
 
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen, onClose]);
-
-  // Prevent scrolling ketika modal terbuka
+  // Lock scroll saat modal terbuka
   React.useEffect(() => {
     if (!isOpen) return;
-
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
-  const [selectedAvatar, setSelectedAvatar] = React.useState<string>(
-    user?.avatarSeed || "Felix"
-  );
-  const [showAvatarPicker, setShowAvatarPicker] = React.useState(false);
-
+  // Simpan Avatar ke localStorage & Trigger Event Storage
   const handleAvatarSelect = (seed: string) => {
     setSelectedAvatar(seed);
     onAvatarChange?.(seed);
+
+    // Langsung simpan saat dipilih
+    const storedUserRaw = localStorage.getItem("user");
+    if (storedUserRaw) {
+      try {
+        const currentUser = JSON.parse(storedUserRaw);
+        const updatedUser = { ...currentUser, avatarSeed: seed };
+        
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        window.dispatchEvent(new Event("storage"));
+      } catch (error) {
+        console.error("Gagal memperbarui avatar di localStorage:", error);
+      }
+    }
   };
 
   const getAvatarUrl = (seed: string) =>
@@ -92,46 +128,31 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
 
   if (!isOpen || !mounted) return null;
 
-  // Hapus variable 'initial' yang tidak digunakan
   const displayName = user?.displayName || (user?.email ? user.email.split("@")[0] : "User");
 
-  // Portal ke document.body agar berada tepat di tengah layar penuh
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-      {/* Backdrop / Overlay */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
-        onClick={onClose}
+        onClick={handleCloseModal}
         aria-hidden="true"
       />
 
-      {/* Modal Container Card */}
+      {/* Modal Container */}
       <div
-        className={`
-          profile-modal-card
-          relative
-          w-110 max-w-[90vw] 
-          bg-white rounded-2xl shadow-2xl 
-          border border-brand-dark/10 
-          overflow-hidden
-          animate-in fade-in zoom-in-95 duration-200
-        `}
+        className="profile-modal-card relative w-110 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-brand-dark/10 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="profile-modal-title"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-brand-dark/5">
-          <h3
-            id="profile-modal-title"
-            className="text-lg font-heading font-semibold text-brand-dark"
-          >
+          <h3 className="text-lg font-heading font-semibold text-brand-dark">
             User Profile
           </h3>
           <button
-            onClick={onClose}
+            onClick={handleCloseModal}
             className="p-1.5 rounded-lg hover:bg-surface transition-colors cursor-pointer"
-            aria-label="Close profile modal"
           >
             <X className="w-5 h-5 text-brand-dark/60 hover:text-brand-dark transition-colors" />
           </button>
@@ -139,28 +160,27 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
 
         {/* Content */}
         <div className="p-6">
-          {/* Avatar & Name Section */}
           <div className="flex items-center gap-4 p-4 bg-surface/50 rounded-xl border border-brand-dark/5">
-            <div className="relative shrink-0">
-              {/* Ganti img dengan Image dari Next.js */}
-              <div className="relative w-14 h-14">
+            <div className="relative shrink-0 p-1">
+              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-brand-dark/10 shadow-md bg-surface">
                 <Image
                   src={getAvatarUrl(selectedAvatar)}
                   alt={`${displayName}'s avatar`}
                   fill
-                  className="rounded-2xl bg-surface shadow-md border-2 border-brand-dark/10 object-cover"
-                  unoptimized // Karena dari external URL
+                  className="object-cover"
+                  unoptimized
                 />
               </div>
+
               <button
                 onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                className="absolute -bottom-1 -right-1 w-6 h-6 bg-brand-purple rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer"
-                aria-label="Change avatar"
+                className="absolute bottom-0 right-0 z-10 w-7 h-7 bg-brand-dark rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer border-2 border-white"
               >
-                <Camera className="w-3 h-3 text-white" />
+                <Camera className="w-3.5 h-3.5 text-white" />
               </button>
             </div>
-            <div className="overflow-hidden">
+
+            <div className="overflow-hidden pl-1">
               <h4 className="font-heading font-semibold text-base text-brand-dark truncate">
                 {displayName}
               </h4>
@@ -170,7 +190,7 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
             </div>
           </div>
 
-          {/* Avatar Picker */}
+          {/* Avatar Picker - Dengan Wrapper Biar Rapi */}
           {showAvatarPicker && (
             <div className="mt-4 p-4 bg-surface/50 rounded-xl border border-brand-dark/5">
               <div className="flex items-center justify-between mb-3">
@@ -179,41 +199,47 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
                 </h5>
                 <button
                   onClick={() => setShowAvatarPicker(false)}
-                  className="text-xs text-brand-purple hover:text-brand-dark transition-colors cursor-pointer"
+                  className="text-xs text-brand-purple hover:text-brand-dark transition-colors cursor-pointer font-medium"
                 >
                   Done
                 </button>
               </div>
-              <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto">
-                {AVATAR_SEEDS.map((seed) => (
-                  <button
-                    key={seed}
-                    onClick={() => handleAvatarSelect(seed)}
-                    className={`
-                      relative w-12 h-12 rounded-xl overflow-hidden transition-all cursor-pointer
-                      ${selectedAvatar === seed
-                        ? "ring-2 ring-brand-purple ring-offset-2 scale-105"
-                        : "hover:scale-105 hover:shadow-md"
-                      }
-                    `}
-                    aria-label={`Select avatar ${seed}`}
-                  >
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={getAvatarUrl(seed)}
-                        alt={seed}
-                        fill
-                        className="object-cover bg-surface"
-                        unoptimized // Karena dari external URL
-                      />
-                    </div>
-                    {selectedAvatar === seed && (
-                      <div className="absolute inset-0 bg-brand-purple/20 flex items-center justify-center">
-                        <Check className="w-5 h-5 text-brand-purple bg-white rounded-full" />
+
+              {/* Wrapper dengan padding & gap yang cukup */}
+              <div className="relative">
+                <div className="grid grid-cols-6 gap-3 max-h-48 overflow-y-auto pr-2 pb-1">
+                  {AVATAR_SEEDS.map((seed) => (
+                    <button
+                      key={seed}
+                      onClick={() => handleAvatarSelect(seed)}
+                      className={`
+                        relative w-12 h-12 rounded-xl overflow-hidden transition-all cursor-pointer shrink-0
+                        ${selectedAvatar === seed
+                          ? "ring-2 ring-brand-purple ring-offset-2 scale-105"
+                          : "hover:scale-105 hover:shadow-md"
+                        }
+                      `}
+                    >
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={getAvatarUrl(seed)}
+                          alt={seed}
+                          fill
+                          className="object-cover bg-surface"
+                          unoptimized
+                        />
                       </div>
-                    )}
-                  </button>
-                ))}
+                      {selectedAvatar === seed && (
+                        <div className="absolute inset-0 bg-brand-purple/20 flex items-center justify-center">
+                          <Check className="w-5 h-5 text-brand-purple bg-white rounded-full p-0.5" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Gradient overlay buat indicator scroll */}
+                <div className="absolute bottom-0 left-0 right-0 h-6 bg-linear-to-t from-surface/50 to-transparent pointer-events-none" />
               </div>
             </div>
           )}

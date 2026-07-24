@@ -1,17 +1,19 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { LogOut } from "lucide-react";
 import ProfileModal from "@/src/components/sidebar/profile/ProfileModal";
+import LogoutConfirmModal from "@/src/components/sidebar/LogoutConfirmModal";
 
 interface UserProfile {
   id?: string;
   email?: string;
   displayName?: string | null;
   walletAddress?: string;
+  avatarSeed?: string;
 }
 
-// Custom subscriber agar mendengarkan event 'storage' lokal & tab ganda
 const subscribeUserStore = (callback: () => void) => {
   window.addEventListener("storage", callback);
   return () => window.removeEventListener("storage", callback);
@@ -22,6 +24,8 @@ const getUserServerSnapshot = () => null;
 
 export default function SidebarUserProfile() {
   const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const [loggingOut, setLoggingOut] = React.useState(false);
 
   const storedUserRaw = React.useSyncExternalStore(
     subscribeUserStore,
@@ -39,16 +43,12 @@ export default function SidebarUserProfile() {
   }, [storedUserRaw]);
 
   const handleLogout = () => {
+    setLoggingOut(true);
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
     localStorage.removeItem("token_expiry");
     document.cookie = "auth_token=; path=/; max-age=0;";
     window.location.replace("/login");
-  };
-
-  // Handler untuk klik avatar - buka modal profile
-  const handleAvatarClick = () => {
-    setIsProfileModalOpen(true);
   };
 
   const initial = user?.displayName
@@ -59,21 +59,36 @@ export default function SidebarUserProfile() {
 
   const displayName = user?.displayName || (user?.email ? user.email.split("@")[0] : "User");
 
+  const avatarUrl = user?.avatarSeed 
+    ? `https://api.dicebear.com/10.x/notionists/svg?seed=${user.avatarSeed}` 
+    : null;
+
   return (
     <>
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t border-surface">
         <div className="flex items-center justify-between px-2 py-2 rounded-xl hover:bg-surface/50 transition-all duration-200 group">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="relative shrink-0">
-              {/* Avatar container - clickable untuk buka modal */}
               <div 
-                onClick={handleAvatarClick}
-                className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-pink to-brand-light-pink flex items-center justify-center text-white font-heading font-semibold text-sm shadow-md shadow-brand-pink/20 uppercase cursor-pointer transition-opacity hover:opacity-80"
+                onClick={() => setIsProfileModalOpen(true)}
+                className="relative w-11 h-11 rounded-xl bg-linear-to-br from-brand-pink to-brand-light-pink flex items-center justify-center text-white font-heading font-semibold text-sm shadow-md shadow-brand-pink/20 uppercase cursor-pointer transition-opacity hover:opacity-80 overflow-hidden border border-brand-dark/10"
               >
-                {initial}
+                {/* 💥 BACA AVATAR DARI LOCAL STORAGE JIKA ADA */}
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt={displayName}
+                    fill
+                    className="object-cover bg-surface"
+                    unoptimized
+                  />
+                ) : (
+                  initial
+                )}
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
             </div>
+
             <div className="truncate">
               <p className="text-sm font-heading font-semibold text-brand-dark truncate">
                 {displayName}
@@ -83,8 +98,9 @@ export default function SidebarUserProfile() {
               </p>
             </div>
           </div>
+
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             className="p-2 rounded-lg hover:bg-surface transition-all duration-200 cursor-pointer shrink-0"
             title="Logout"
           >
@@ -93,11 +109,17 @@ export default function SidebarUserProfile() {
         </div>
       </div>
 
-      {/* Profile Modal */}
       <ProfileModal 
         isOpen={isProfileModalOpen} 
         onClose={() => setIsProfileModalOpen(false)} 
         user={user}
+      />
+
+      <LogoutConfirmModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        loading={loggingOut}
       />
     </>
   );

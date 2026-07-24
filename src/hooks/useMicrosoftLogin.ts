@@ -18,8 +18,10 @@ export function useMicrosoftLogin({ clientId, redirectUri, onSuccess, onError }:
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
     
-    // Generate state acak untuk mencegah CSRF
-    const state = Math.random().toString(36).substring(2, 15);
+    // ✅ FIX SECURITY (FUNC-4): Generate state acak terenkripsi kriptografi via Web Crypto API untuk mencegah CSRF
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
+    const state = Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
     sessionStorage.setItem("microsoft_oauth_state", state);
 
     const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email%20User.Read&response_mode=query&state=${state}`;
@@ -32,7 +34,7 @@ export function useMicrosoftLogin({ clientId, redirectUri, onSuccess, onError }:
       return;
     }
 
-    // ✅ PERBAIKAN 1: Deklarasikan variabel flag di sini
+    // Deklarasikan variabel flag untuk tracking pesan
     let hasReceivedMessage = false;
 
     const handleMessage = (event: MessageEvent) => {
@@ -40,7 +42,7 @@ export function useMicrosoftLogin({ clientId, redirectUri, onSuccess, onError }:
 
       if (event.data.type === "MICROSOFT_AUTH_SUCCESS") {
         if (event.data.state === sessionStorage.getItem("microsoft_oauth_state")) {
-          // ✅ PERBAIKAN 2: Tandai bahwa kita sudah menerima pesan sukses
+          // Tandai bahwa kita sudah menerima pesan sukses
           hasReceivedMessage = true;
           
           onSuccess({ code: event.data.code });
@@ -52,7 +54,7 @@ export function useMicrosoftLogin({ clientId, redirectUri, onSuccess, onError }:
         setLoading(false);
         
       } else if (event.data.type === "MICROSOFT_AUTH_ERROR") {
-        // ✅ PERBAIKAN 3: Tandai juga jika ada error, agar tidak trigger error "ditutup manual"
+        // Tandai jika ada error dari popup agar tidak memicu error "ditutup manual"
         hasReceivedMessage = true;
         
         onError(new Error(event.data.error || "Login gagal"));
@@ -71,7 +73,7 @@ export function useMicrosoftLogin({ clientId, redirectUri, onSuccess, onError }:
           window.removeEventListener("message", handleMessage);
           setLoading(false);
           
-          // Hanya tampilkan error jika belum ada data yang masuk (baik sukses maupun error)
+          // Hanya tampilkan error jika belum ada data yang masuk
           if (!hasReceivedMessage) { 
             onError(new Error("Pop-up has been closed manually by the user."));
           }
