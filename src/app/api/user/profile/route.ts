@@ -4,33 +4,42 @@ import prisma from "@/src/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, displayName } = await req.json();
+    const { userId, displayName, avatarSeed } = await req.json();
 
-    if (!userId || !displayName || !displayName.trim()) {
+    if (!userId) {
       return NextResponse.json(
-        { success: false, message: "User ID and valid name are required" },
+        { success: false, message: "User ID is required" },
         { status: 400 }
       );
     }
 
-    const cleanName = displayName.trim();
+    // Menyiapkan data yang akan di-update secara dinamis
+    const updateData: { displayName?: string; avatarSeed?: string } = {};
 
-    // ✅ FIX BP-6: Batasi panjang nama maksimal 50 karakter
-    if (cleanName.length > 50) {
-      return NextResponse.json(
-        { success: false, message: "Display name cannot exceed 50 characters" },
-        { status: 400 }
-      );
+    if (displayName !== undefined && displayName.trim()) {
+      const cleanName = displayName.trim();
+      if (cleanName.length > 50) {
+        return NextResponse.json(
+          { success: false, message: "Display name cannot exceed 50 characters" },
+          { status: 400 }
+        );
+      }
+      updateData.displayName = cleanName;
     }
 
-    // Update displayName di database
+    if (avatarSeed !== undefined) {
+      updateData.avatarSeed = avatarSeed;
+    }
+
+    // Update di database Prisma
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { displayName: cleanName },
+      data: updateData,
       select: {
         id: true,
         email: true,
         displayName: true,
+        avatarSeed: true, // 👈 Sertakan avatarSeed dalam return response
         walletAddress: true,
         createdAt: true,
         updatedAt: true,

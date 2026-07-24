@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Home, BarChart, FileText, Users } from "lucide-react";
+import { Home, LayoutDashboard, Link, Wallet } from "lucide-react";
 
 import SidebarHeader from "@/src/components/sidebar/SidebarHeader";
 import SidebarWallet from "@/src/components/sidebar/SidebarWallet";
@@ -21,25 +21,27 @@ interface UserProfile {
   walletAddress?: string | null;
 }
 
+// 💥 MENU YANG DISEDERHANAKAN - Hanya 4 item
 const menuItems: MenuItem[] = [
-  { title: "Dashboard", icon: Home, url: "#" },
-  { title: "Analytics", icon: BarChart, url: "#" },
-  {
-    title: "Documents",
-    icon: FileText,
-    items: [
-      { title: "Recent", url: "#" },
-      { title: "Starred", url: "#" },
-      { title: "Archived", url: "#" },
-    ],
+  { 
+    title: "Dashboard", 
+    icon: Home, 
+    url: "/dashboard" 
   },
-  {
-    title: "Team",
-    icon: Users,
-    items: [
-      { title: "Members", url: "#" },
-      { title: "Invites", url: "#" },
-    ],
+  { 
+    title: "Workspace", 
+    icon: LayoutDashboard, 
+    url: "/workspace" 
+  },
+  { 
+    title: "Connection", 
+    icon: Link, 
+    url: "/connection" 
+  },
+  { 
+    title: "Wallet", 
+    icon: Wallet, 
+    url: "/wallet" 
   },
 ];
 
@@ -53,7 +55,7 @@ const getUserServerSnapshot = () => null;
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [renderSidebar, setRenderSidebar] = React.useState(false);
-  const [expandedItems, setExpandedItems] = React.useState<string[]>(["Documents"]);
+  const [expandedItems, setExpandedItems] = React.useState<string[]>([]); // 💥 Kosongkan karena ga ada submenu
   const [activeItem, setActiveItem] = React.useState<string>("Dashboard");
   const [isWalletBalanceOpen, setIsWalletBalanceOpen] = React.useState(false);
 

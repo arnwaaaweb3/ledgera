@@ -1,9 +1,11 @@
+// src/components/sidebar/profile/ProfileModal.tsx
 "use client";
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import Image from "next/image";
-import { X, Camera, Check } from "lucide-react";
+import axios from "axios";
+import { X, Camera, Check, Loader2 } from "lucide-react";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -34,47 +36,26 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
   const [selectedAvatar, setSelectedAvatar] = React.useState<string>(
     user?.avatarSeed || "Felix"
   );
-  
-  // Track prop sebelumnya untuk sinkronisasi
-  const [prevAvatarSeed, setPrevAvatarSeed] = React.useState<string | undefined>(user?.avatarSeed);
+  const [saving, setSaving] = React.useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = React.useState(false);
 
+  // Sync prop avatarSeed jika props user berubah
+  const [prevAvatarSeed, setPrevAvatarSeed] = React.useState<string | undefined>(user?.avatarSeed);
   if (user?.avatarSeed !== prevAvatarSeed) {
     setPrevAvatarSeed(user?.avatarSeed);
     setSelectedAvatar(user?.avatarSeed || "Felix");
   }
 
-  const [showAvatarPicker, setShowAvatarPicker] = React.useState(false);
-
-  // 💥 FUNGSI CLOSE MODAL DENGAN SIMPAN AVATAR (PINDAH KE ATAS)
   const handleCloseModal = React.useCallback(() => {
-    // Simpan avatar terakhir yang dipilih ke localStorage
-    if (selectedAvatar) {
-      const storedUserRaw = localStorage.getItem("user");
-      if (storedUserRaw) {
-        try {
-          const currentUser = JSON.parse(storedUserRaw);
-          const updatedUser = { ...currentUser, avatarSeed: selectedAvatar };
-          
-          localStorage.setItem("user", JSON.stringify(updatedUser));
-          window.dispatchEvent(new Event("storage"));
-        } catch (error) {
-          console.error("Gagal memperbarui avatar di localStorage:", error);
-        }
-      }
-    }
     onClose();
-  }, [selectedAvatar, onClose]);
+  }, [onClose]);
 
   // Handle ESC key
   React.useEffect(() => {
     if (!isOpen) return;
-
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        handleCloseModal();
-      }
+      if (e.key === "Escape") handleCloseModal();
     };
-
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
   }, [isOpen, handleCloseModal]);
@@ -82,19 +63,17 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
   // Handle Click Outside
   React.useEffect(() => {
     if (!isOpen) return;
-
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest(".profile-modal-card")) {
         handleCloseModal();
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen, handleCloseModal]);
 
-  // Lock scroll saat modal terbuka
+  // Lock scroll
   React.useEffect(() => {
     if (!isOpen) return;
     document.body.style.overflow = "hidden";
@@ -103,22 +82,38 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
     };
   }, [isOpen]);
 
-  // Simpan Avatar ke localStorage & Trigger Event Storage
-  const handleAvatarSelect = (seed: string) => {
+  // 🔥 PILIH & SIMPAN AVATAR LANGSUNG KE DATABASE + LOCALSTORAGE
+  const handleAvatarSelect = async (seed: string) => {
     setSelectedAvatar(seed);
     onAvatarChange?.(seed);
 
-    // Langsung simpan saat dipilih
     const storedUserRaw = localStorage.getItem("user");
-    if (storedUserRaw) {
+    let currentUser = storedUserRaw ? JSON.parse(storedUserRaw) : user;
+
+    // 1. Update ke LocalStorage terlebih dahulu (responsif instan)
+    if (currentUser) {
+      currentUser = { ...currentUser, avatarSeed: seed };
+      localStorage.setItem("user", JSON.stringify(currentUser));
+      window.dispatchEvent(new Event("storage"));
+    }
+
+    // 2. Kirim dan simpan secara permanen di Database via API
+    if (user?.id) {
+      setSaving(true);
       try {
-        const currentUser = JSON.parse(storedUserRaw);
-        const updatedUser = { ...currentUser, avatarSeed: seed };
-        
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        window.dispatchEvent(new Event("storage"));
+        const response = await axios.post("/api/user/profile", {
+          userId: user.id,
+          avatarSeed: seed,
+        });
+
+        if (response.data.success) {
+          localStorage.setItem("user", JSON.stringify(response.data.user));
+          window.dispatchEvent(new Event("storage"));
+        }
       } catch (error) {
-        console.error("Gagal memperbarui avatar di localStorage:", error);
+        console.error("Failed to save avatar to database:", error);
+      } finally {
+        setSaving(false);
       }
     }
   };
@@ -162,7 +157,7 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
         <div className="p-6">
           <div className="flex items-center gap-4 p-4 bg-surface/50 rounded-xl border border-brand-dark/5">
             <div className="relative shrink-0 p-1">
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-brand-dark/10 shadow-md bg-surface">
+              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-brand-dark/10 shadow-md bg-surface flex items-center justify-center">
                 <Image
                   src={getAvatarUrl(selectedAvatar)}
                   alt={`${displayName}'s avatar`}
@@ -170,6 +165,11 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
                   className="object-cover"
                   unoptimized
                 />
+                {saving && (
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  </div>
+                )}
               </div>
 
               <button
@@ -190,7 +190,7 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
             </div>
           </div>
 
-          {/* Avatar Picker - Dengan Wrapper Biar Rapi */}
+          {/* Avatar Picker */}
           {showAvatarPicker && (
             <div className="mt-4 p-4 bg-surface/50 rounded-xl border border-brand-dark/5">
               <div className="flex items-center justify-between mb-3">
@@ -205,15 +205,15 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
                 </button>
               </div>
 
-              {/* Wrapper dengan padding & gap yang cukup */}
               <div className="relative">
                 <div className="grid grid-cols-6 gap-3 max-h-48 overflow-y-auto pr-2 pb-1">
                   {AVATAR_SEEDS.map((seed) => (
                     <button
                       key={seed}
                       onClick={() => handleAvatarSelect(seed)}
+                      disabled={saving}
                       className={`
-                        relative w-12 h-12 rounded-xl overflow-hidden transition-all cursor-pointer shrink-0
+                        relative w-12 h-12 rounded-xl overflow-hidden transition-all cursor-pointer shrink-0 disabled:opacity-50
                         ${selectedAvatar === seed
                           ? "ring-2 ring-brand-purple ring-offset-2 scale-105"
                           : "hover:scale-105 hover:shadow-md"
@@ -238,7 +238,6 @@ export default function ProfileModal({ isOpen, onClose, user, onAvatarChange }: 
                   ))}
                 </div>
                 
-                {/* Gradient overlay buat indicator scroll */}
                 <div className="absolute bottom-0 left-0 right-0 h-6 bg-linear-to-t from-surface/50 to-transparent pointer-events-none" />
               </div>
             </div>

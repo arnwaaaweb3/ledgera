@@ -87,7 +87,7 @@ export default function SidebarWallet({ onWalletClick }: SidebarWalletProps) {
               <div
                 className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                   walletAddress
-                    ? "bg-green-500/10 text-green-600"
+                    ? "bg-green-500/10 text-brand-dark"
                     : "bg-brand-pink/10 text-brand-pink"
                 }`}
               >

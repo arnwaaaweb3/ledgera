@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       const isValidCaptcha = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!isValidCaptcha) {
         return NextResponse.json(
-          { success: false, message: "Sistem mendeteksi aktivitas mencurigakan (Turnstile failed)." },
+          { success: false, message: "Failed to verify. Please try again!" },
           { status: 400 }
         );
       }
