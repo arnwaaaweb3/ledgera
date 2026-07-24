@@ -24,6 +24,13 @@ enum TransactionCategory {
   BUSINESS
 }
 
+// Enum untuk Provider IDR Stablecoin (Adapter Layer)
+enum IdrStablecoinIssuer {
+  IDRX        // IDRX Token
+  IDRT        // IDRT Token
+  BI_CBDC     // Digital Rupiah (Bank Indonesia)
+}
+
 // 1. MODEL USER
 model User {
   id              String          @id @default(cuid()) 
@@ -73,6 +80,12 @@ model Transaction {
   
   title           String
   amount          Decimal             // Presisi desimal tinggi untuk nominal Rupiah / Stablecoin
+  
+  // 🌟 IDR STABLECOIN ADAPTER METADATA
+  issuer          IdrStablecoinIssuer @default(IDRX)
+  tokenAddress    String?             // Address smart contract token IDR di EVM
+  chainId         Int                 @default(97) // 97 = BNB Chain Testnet
+  
   descriptionHash String?             // Optional: IPFS / Off-chain metadata hash
   evidenceUrl     String?             // Tambahan: Bukti pembayaran / foto milestone escrow
   arweaveTxId     String?             // Permanent audit log ID dari Arweave/Irys

@@ -1,7 +1,9 @@
+// src/components/sidebar/wallets/WalletBalance.tsx
 "use client";
 
 import * as React from "react";
-import { X, Wallet } from "lucide-react";
+import { X, Wallet, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useUserBalance } from "@/src/hooks/useUserBalance";
 
 interface WalletBalanceProps {
   isOpen: boolean;
@@ -9,6 +11,11 @@ interface WalletBalanceProps {
 }
 
 export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
+  const [showBalance, setShowBalance] = React.useState(true);
+  
+  // 🚀 AMBIL DATA REAL DARI BLOCKCHAIN (KUMULATIF IDRX + IDRT)
+  const { balance, isLoading } = useUserBalance();
+
   // Handle Click Outside
   React.useEffect(() => {
     if (!isOpen) return;
@@ -46,6 +53,26 @@ export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
 
   if (!isOpen) return null;
 
+  // Format angka Rupiah dari akumulasi real balance
+  const formattedBalance = new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(balance);
+
+  // Auto-Scaling Font Size berdasarkan panjang string
+  const getFontSizeClass = (text: string) => {
+    const len = text.length;
+    if (len <= 12) return "text-3xl md:text-4xl"; 
+    if (len <= 15) return "text-2xl md:text-3xl"; 
+    if (len <= 18) return "text-xl md:text-2xl";   
+    return "text-lg md:text-xl";                   
+  };
+
+  const currentDisplay = showBalance ? formattedBalance : "••••••••••••";
+  const fontSizeClass = showBalance ? getFontSizeClass(formattedBalance) : "text-3xl md:text-4xl";
+
   return (
     <>
       {/* Backdrop */}
@@ -60,7 +87,7 @@ export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
           wallet-balance-popup
           fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
           z-60
-          w-105 max-w-[90vw] 
+          w-105 max-w-[92vw] 
           bg-white rounded-2xl shadow-2xl 
           border border-brand-dark/10 
           overflow-hidden
@@ -84,9 +111,55 @@ export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
           </button>
         </div>
 
-        {/* Content - KOSONG */}
+        {/* Content - Balance Display */}
         <div className="p-6">
-          <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="flex flex-col items-center justify-center py-8 px-4 bg-surface/50 rounded-xl border border-brand-dark/5">
+            {/* Label */}
+            <p className="text-xs font-body text-brand-dark/50 uppercase tracking-wider mb-2">
+              Your Balance
+            </p>
+
+            {/* BALANCE DISPLAY */}
+            <div className="flex items-center justify-center gap-2 w-full max-w-full">
+              {isLoading ? (
+                <div className="flex items-center gap-2 py-2 text-brand-dark/50">
+                  <Loader2 className="w-6 h-6 animate-spin text-brand-dark" />
+                  <span className="text-sm font-body">Fetching chain balance...</span>
+                </div>
+              ) : (
+                <>
+                  <span
+                    className={`
+                      ${fontSizeClass}
+                      font-heading font-bold text-brand-dark
+                      tracking-tight whitespace-nowrap
+                      transition-all duration-200
+                      select-all
+                    `}
+                  >
+                    {currentDisplay}
+                  </span>
+
+                  {/* Eye Toggle Button */}
+                  <button
+                    onClick={() => setShowBalance(!showBalance)}
+                    className="p-1.5 rounded-lg hover:bg-surface transition-colors cursor-pointer text-brand-dark/40 hover:text-brand-dark/70 shrink-0"
+                    aria-label={showBalance ? "Hide balance" : "Show balance"}
+                  >
+                    {showBalance ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Subtitle kecil */}
+            <p className="text-xs font-body text-brand-dark/40 mt-3 text-center">
+              Total balance across all networks
+            </p>
           </div>
         </div>
       </div>

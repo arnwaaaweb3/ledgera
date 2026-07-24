@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         displayName: user.displayName,
+        username: user.username, // 👈 PENTING: Kembalikan username dari database
         walletAddress: user.walletAddress,
         picture: picture,
       },

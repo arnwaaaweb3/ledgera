@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
       id: string;
       email: string;
       displayName: string | null;
+      username: string | null;
       walletAddress: string;
       googleSub: string | null;
       createdAt: Date;
@@ -115,6 +116,7 @@ export async function POST(req: NextRequest) {
         id: existingUser.id,
         email: existingUser.email,
         displayName: existingUser.displayName,
+        username: existingUser.username, // 👈 PENTING: Sertakan username agar modal tidak muncul ulang
         walletAddress: existingUser.walletAddress,
         googleSub: existingUser.googleSub,
         createdAt: existingUser.createdAt,
@@ -131,8 +133,15 @@ export async function POST(req: NextRequest) {
           password: hashedPassword,
           walletAddress: autoWallet.address,
         },
-        omit: {
-          password: true,
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          username: true, // 👈 PENTING: sertakan username di select
+          walletAddress: true,
+          googleSub: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
 

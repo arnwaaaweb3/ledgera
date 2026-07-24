@@ -1,6 +1,7 @@
+// src/app/api/auth/microsoft/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import prisma from '@/src/lib/prisma'; // Sesuaikan path prisma kamu
+import prisma from '@/src/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,7 +60,6 @@ export async function POST(request: NextRequest) {
     console.log('✅ Microsoft verification successful:', { email, displayName });
 
     // 5. LOGIKA DATABASE YANG DIPERBAIKI (Merge Identity)
-    // Cek apakah user dengan email ini sudah ada (misal: dulu daftar pakai Email/Google)
     const existingUser = await prisma.user.findUnique({
       where: { email: email },
     });
@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         displayName: user.displayName,
+        username: user.username, // 👈 PENTING: Kembalikan username dari database
         walletAddress: user.walletAddress,
         picture: null,
       },
