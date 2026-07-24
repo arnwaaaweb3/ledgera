@@ -4,59 +4,50 @@
 import { useState, useEffect } from "react";
 import { idrAdapterRegistry } from "@/src/lib/adapters";
 
-// Helper function untuk membaca walletAddress secara aman (SSR safe)
-function getInitialWalletAddress(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const storedUser = localStorage.getItem("user");
-    if (!storedUser) return null;
-    const parsed = JSON.parse(storedUser);
-    return parsed?.walletAddress || null;
-  } catch (e) {
-    console.error("Error parsing stored user:", e);
-    return null;
-  }
-}
-
 export function useUserBalance() {
-  // 1. Lazy state initialization (Mengisi state awal tanpa useEffect)
-  const [walletAddress] = useState<string | null>(getInitialWalletAddress);
-  const [balance, setBalance] = useState<number>(0);
-  
-  // Jika walletAddress null dari awal, isLoading langsung false
-  const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(getInitialWalletAddress()));
+  const [balanceRupiah, setBalanceRupiah] = useState<string>("Rp 0");
+  const [rawBalance, setRawBalance] = useState<bigint>(BigInt(0));
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Jika tidak ada wallet, hentikan effect
-    if (!walletAddress) return;
-
-    let isMounted = true;
-
-    async function fetchBalances() {
+    async function fetchBalance() {
       try {
-        const cumulative = await idrAdapterRegistry.getCumulativeBalanceInRupiah(walletAddress!);
-        if (isMounted) {
-          setBalance(cumulative);
+        setLoading(true);
+        // 1. Ambil data user dari LocalStorage
+        const storedUser = localStorage.getItem("user");
+        if (!storedUser) {
+          setLoading(false);
+          return;
+        }
+
+        const userData = JSON.parse(storedUser);
+        const walletAddress = userData?.walletAddress;
+
+        if (!walletAddress) {
+          setLoading(false);
+          return;
+        }
+
+        // 2. Minta saldo dari IDRX Adapter
+        const idrxAdapter = idrAdapterRegistry.getAdapter("IDRX");
+        if (idrxAdapter) {
+          const balance = await idrxAdapter.getBalance(walletAddress);
+          setRawBalance(balance);
+          setBalanceRupiah(idrxAdapter.formatToRupiah(balance));
         }
       } catch (err) {
-        console.error("Failed to fetch cumulative balance:", err);
+        console.error("Error fetching balance:", err);
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setLoading(false);
       }
     }
 
-    fetchBalances();
+    fetchBalance();
 
-    // Polling setiap 15 detik untuk update balance dari chain
-    const interval = setInterval(fetchBalances, 15000);
+    // Polling setiap 10 detik
+    const interval = setInterval(fetchBalance, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [walletAddress]);
-
-  return { balance, isLoading, walletAddress };
+  return { balanceRupiah, rawBalance, loading };
 }

@@ -13,8 +13,8 @@ interface WalletBalanceProps {
 export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
   const [showBalance, setShowBalance] = React.useState(true);
   
-  // 🚀 AMBIL DATA REAL DARI BLOCKCHAIN (KUMULATIF IDRX + IDRT)
-  const { balance, isLoading } = useUserBalance();
+  // 🚀 AMBIL DATA REAL DARI HOOK (Sesuai return type useUserBalance)
+  const { balanceRupiah, loading } = useUserBalance();
 
   // Handle Click Outside
   React.useEffect(() => {
@@ -53,14 +53,6 @@ export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
 
   if (!isOpen) return null;
 
-  // Format angka Rupiah dari akumulasi real balance
-  const formattedBalance = new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(balance);
-
   // Auto-Scaling Font Size berdasarkan panjang string
   const getFontSizeClass = (text: string) => {
     const len = text.length;
@@ -70,8 +62,8 @@ export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
     return "text-lg md:text-xl";                   
   };
 
-  const currentDisplay = showBalance ? formattedBalance : "••••••••••••";
-  const fontSizeClass = showBalance ? getFontSizeClass(formattedBalance) : "text-3xl md:text-4xl";
+  const currentDisplay = showBalance ? balanceRupiah : "••••••••••••";
+  const fontSizeClass = showBalance ? getFontSizeClass(balanceRupiah) : "text-3xl md:text-4xl";
 
   return (
     <>
@@ -121,7 +113,7 @@ export default function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
 
             {/* BALANCE DISPLAY */}
             <div className="flex items-center justify-center gap-2 w-full max-w-full">
-              {isLoading ? (
+              {loading ? (
                 <div className="flex items-center gap-2 py-2 text-brand-dark/50">
                   <Loader2 className="w-6 h-6 animate-spin text-brand-dark" />
                   <span className="text-sm font-body">Fetching chain balance...</span>

@@ -3,14 +3,13 @@ import { IIdrStablecoinAdapter, IdrTokenMetadata } from "./types";
 import { parseUnits, formatUnits, getAddress } from "viem";
 import { publicClient, erc20Abi } from "@/src/lib/viemClient";
 
-const DEFAULT_IDRX_ADDRESS = "0x337610d27c682E347C9cD60BD4b3b107C9d34dDd";
+const DEFAULT_IDRX_ADDRESS = "0x649a2DA7B28E0D54c13D5eFf95d3A660652742cC";
 
 export class IDRXAdapter implements IIdrStablecoinAdapter {
   readonly metadata: IdrTokenMetadata;
 
   constructor() {
     const rawAddress = process.env.NEXT_PUBLIC_IDRX_CONTRACT_ADDRESS || DEFAULT_IDRX_ADDRESS;
-    // Format alamat agar lolos EIP-55 Checksum Validation
     const checksumAddress = getAddress(rawAddress);
 
     this.metadata = {
@@ -18,7 +17,7 @@ export class IDRXAdapter implements IIdrStablecoinAdapter {
       name: "IDRX Stablecoin",
       issuer: "IDRX Platform",
       decimals: 18,
-      chainId: 97,
+      chainId: 56, // BSC Mainnet
       contractAddress: checksumAddress,
     };
   }
@@ -49,10 +48,10 @@ export class IDRXAdapter implements IIdrStablecoinAdapter {
         args: [validUserAddress],
       });
 
-      return rawBalance;
+      return rawBalance as bigint;
     } catch (error) {
-      console.warn("⚠️ [IDRX Adapter] RPC unreachable or contract not deployed on this network:", error);
-      return BigInt(0); // Return 0 gracefully tanpa crash
+      console.error("⚠️ [IDRX Adapter Error]:", error);
+      return BigInt(0);
     }
   }
 }
